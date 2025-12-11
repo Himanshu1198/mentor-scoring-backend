@@ -1,0 +1,38 @@
+{
+  "audioFiles": [
+    {
+      "id": "audio_001",
+      "videoId": "13456d19-0a01-43d0-8c04-bc8eb8bb74f6",
+      "mentorId": "1",
+      "mentorName": "Dr. Sarah Johnson",
+      "title": "Introduction to Video Processing",
+      "description": "This audio explains the fundamentals of video processing and chunking techniques.",
+      "duration": 180,
+      "url": "/api/audio/audio_001.mp3",
+      "createdAt": "2024-01-15T10:30:00Z"
+    },
+    {
+      "id": "audio_002",
+      "videoId": "acc04926-d6e7-404a-bfe8-dec81aafee3c",
+      "mentorId": "2",
+      "mentorName": "Prof. Michael Chen",
+      "title": "Advanced Video Analysis",
+      "description": "Deep dive into video analysis algorithms and optimization strategies.",
+      "duration": 240,
+      "url": "/api/audio/audio_002.mp3",
+      "createdAt": "2024-01-16T14:20:00Z"
+    },
+    {
+      "id": "audio_003",
+      "videoId": "b57c6567-fa1d-45d1-b73a-48aef6fedb51",
+      "mentorId": "3",
+      "mentorName": "Dr. Emily Rodriguez",
+      "title": "Video Chunking Best Practices",
+      "description": "Learn the best practices for efficient video chunking and processing.",
+      "duration": 195,
+      "url": "/api/audio/audio_003.mp3",
+      "createdAt": "2024-01-17T09:15:00Z"
+    }
+  ]
+}
+

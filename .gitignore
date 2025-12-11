@@ -1,0 +1,8 @@
+uploads/
+chunks/
+__pycache__/
+*.pyc
+.env
+venv/
+env/
+

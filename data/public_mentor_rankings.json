@@ -1,0 +1,115 @@
+{
+  "filters": {
+    "subjects": ["Mathematics", "Computer Science", "Physics", "Chemistry"],
+    "languages": ["English", "Hindi", "Spanish"],
+    "experienceLevels": ["0-2 years", "3-5 years", "6-10 years", "10+ years"],
+    "timeWindows": ["weekly", "monthly"]
+  },
+  "rankings": [
+    {
+      "id": "m1",
+      "rank": 1,
+      "name": "Ayesha Sharma",
+      "verified": true,
+      "overallScore": 94,
+      "strengthTag": "Best Engagement",
+      "subject": "Computer Science",
+      "language": "English",
+      "experienceLevel": "6-10 years",
+      "timeWindow": "weekly",
+      "avgScoreTrend": [90, 92, 94, 94]
+    },
+    {
+      "id": "m2",
+      "rank": 2,
+      "name": "Rahul Verma",
+      "verified": true,
+      "overallScore": 92,
+      "strengthTag": "Top 10% in Clarity",
+      "subject": "Mathematics",
+      "language": "Hindi",
+      "experienceLevel": "3-5 years",
+      "timeWindow": "weekly",
+      "avgScoreTrend": [88, 89, 91, 92]
+    },
+    {
+      "id": "m3",
+      "rank": 3,
+      "name": "Elena García",
+      "verified": true,
+      "overallScore": 90,
+      "strengthTag": "Best Engagement",
+      "subject": "Physics",
+      "language": "Spanish",
+      "experienceLevel": "10+ years",
+      "timeWindow": "weekly",
+      "avgScoreTrend": [86, 88, 89, 90]
+    }
+  ],
+  "profiles": {
+    "m1": {
+      "id": "m1",
+      "name": "Ayesha Sharma",
+      "verified": true,
+      "bio": "Computer Science mentor focused on algorithms and systems design.",
+      "expertise": ["Algorithms", "System Design", "Data Structures"],
+      "strengthTag": "Best Engagement",
+      "avgScoreTrend": [90, 92, 94, 94],
+      "peerBadges": ["Top 10% in Clarity", "Top 5% in Engagement"],
+      "teachingHighlights": [
+        "Led 120+ live sessions with 95% satisfaction.",
+        "Introduced interactive quizzes that increased engagement by 20%.",
+        "Mentored students into top competitive programming ranks."
+      ],
+      "contact": {
+        "email": "ayesha.sharma@example.com",
+        "phone": "+91 98765 43210",
+        "linkedin": "https://www.linkedin.com/in/ayesha-sharma",
+        "twitter": "https://twitter.com/ayesha_teaches"
+      }
+    },
+    "m2": {
+      "id": "m2",
+      "name": "Rahul Verma",
+      "verified": true,
+      "bio": "Mathematics educator specializing in calculus and linear algebra.",
+      "expertise": ["Calculus", "Linear Algebra", "Probability"],
+      "strengthTag": "Top 10% in Clarity",
+      "avgScoreTrend": [88, 89, 91, 92],
+      "peerBadges": ["Top 10% in Clarity"],
+      "teachingHighlights": [
+        "Simplified complex calculus concepts with visual aids.",
+        "Developed problem sets that boosted practice completion by 30%.",
+        "Hosted bilingual sessions to widen accessibility."
+      ],
+      "contact": {
+        "email": "rahul.verma@example.com",
+        "phone": "+91 91234 56780",
+        "linkedin": "https://www.linkedin.com/in/rahul-verma",
+        "twitter": "https://twitter.com/rahul_math"
+      }
+    },
+    "m3": {
+      "id": "m3",
+      "name": "Elena García",
+      "verified": true,
+      "bio": "Physics mentor with a focus on mechanics and electromagnetism.",
+      "expertise": ["Mechanics", "Electromagnetism", "Exam Strategy"],
+      "strengthTag": "Best Engagement",
+      "avgScoreTrend": [86, 88, 89, 90],
+      "peerBadges": ["Top 5% in Engagement"],
+      "teachingHighlights": [
+        "Uses demos to explain core physics principles.",
+        "Runs weekly doubt-clearing clinics with high attendance.",
+        "Publishes concise recap notes after every session."
+      ],
+      "contact": {
+        "email": "elena.garcia@example.com",
+        "phone": "+34 612 345 678",
+        "linkedin": "https://www.linkedin.com/in/elena-garcia",
+        "twitter": "https://twitter.com/elena_phys"
+      }
+    }
+  }
+}
+

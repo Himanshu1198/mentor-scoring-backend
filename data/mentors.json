@@ -1,0 +1,50 @@
+{
+  "mentors": [
+    {
+      "id": "1",
+      "name": "Dr. Sarah Johnson",
+      "email": "sarah.johnson@example.com",
+      "specialization": "Computer Science & Machine Learning",
+      "bio": "Expert in AI/ML with 10+ years of experience. Specializes in deep learning and neural networks.",
+      "rating": 4.8,
+      "studentsCount": 150
+    },
+    {
+      "id": "2",
+      "name": "Prof. Michael Chen",
+      "email": "michael.chen@example.com",
+      "specialization": "Data Science & Analytics",
+      "bio": "Data scientist with expertise in big data analytics and statistical modeling.",
+      "rating": 4.9,
+      "studentsCount": 200
+    },
+    {
+      "id": "3",
+      "name": "Dr. Emily Rodriguez",
+      "email": "emily.rodriguez@example.com",
+      "specialization": "Software Engineering",
+      "bio": "Full-stack developer and software architect with extensive industry experience.",
+      "rating": 4.7,
+      "studentsCount": 120
+    },
+    {
+      "id": "4",
+      "name": "Prof. James Wilson",
+      "email": "james.wilson@example.com",
+      "specialization": "Cybersecurity",
+      "bio": "Cybersecurity expert focusing on network security and ethical hacking.",
+      "rating": 4.6,
+      "studentsCount": 90
+    },
+    {
+      "id": "5",
+      "name": "Dr. Lisa Anderson",
+      "email": "lisa.anderson@example.com",
+      "specialization": "Web Development",
+      "bio": "Frontend and backend web development specialist with modern framework expertise.",
+      "rating": 4.8,
+      "studentsCount": 180
+    }
+  ]
+}
+

@@ -1,0 +1,102 @@
+{
+  "mentorId": "1",
+  "skills": [
+    {
+      "name": "Clarity",
+      "currentScore": 92,
+      "previousScore": 89,
+      "trend": "up",
+      "peerAverage": 78,
+      "history": [
+        { "month": "2023-07", "score": 85 },
+        { "month": "2023-08", "score": 87 },
+        { "month": "2023-09", "score": 88 },
+        { "month": "2023-10", "score": 89 },
+        { "month": "2023-11", "score": 90 },
+        { "month": "2023-12", "score": 91 },
+        { "month": "2024-01", "score": 92 }
+      ]
+    },
+    {
+      "name": "Engagement",
+      "currentScore": 85,
+      "previousScore": 82,
+      "trend": "up",
+      "peerAverage": 75,
+      "history": [
+        { "month": "2023-07", "score": 78 },
+        { "month": "2023-08", "score": 79 },
+        { "month": "2023-09", "score": 80 },
+        { "month": "2023-10", "score": 81 },
+        { "month": "2023-11", "score": 82 },
+        { "month": "2023-12", "score": 83 },
+        { "month": "2024-01", "score": 85 }
+      ]
+    },
+    {
+      "name": "Pacing",
+      "currentScore": 88,
+      "previousScore": 86,
+      "trend": "up",
+      "peerAverage": 80,
+      "history": [
+        { "month": "2023-07", "score": 82 },
+        { "month": "2023-08", "score": 83 },
+        { "month": "2023-09", "score": 84 },
+        { "month": "2023-10", "score": 85 },
+        { "month": "2023-11", "score": 85 },
+        { "month": "2023-12", "score": 86 },
+        { "month": "2024-01", "score": 88 }
+      ]
+    },
+    {
+      "name": "Subject Depth",
+      "currentScore": 90,
+      "previousScore": 88,
+      "trend": "up",
+      "peerAverage": 82,
+      "history": [
+        { "month": "2023-07", "score": 84 },
+        { "month": "2023-08", "score": 85 },
+        { "month": "2023-09", "score": 86 },
+        { "month": "2023-10", "score": 87 },
+        { "month": "2023-11", "score": 87 },
+        { "month": "2023-12", "score": 88 },
+        { "month": "2024-01", "score": 90 }
+      ]
+    },
+    {
+      "name": "Delivery Confidence",
+      "currentScore": 86,
+      "previousScore": 84,
+      "trend": "up",
+      "peerAverage": 77,
+      "history": [
+        { "month": "2023-07", "score": 79 },
+        { "month": "2023-08", "score": 80 },
+        { "month": "2023-09", "score": 81 },
+        { "month": "2023-10", "score": 82 },
+        { "month": "2023-11", "score": 83 },
+        { "month": "2023-12", "score": 84 },
+        { "month": "2024-01", "score": 86 }
+      ]
+    },
+    {
+      "name": "Responsiveness to Questions",
+      "currentScore": 84,
+      "previousScore": 81,
+      "trend": "up",
+      "peerAverage": 73,
+      "history": [
+        { "month": "2023-07", "score": 76 },
+        { "month": "2023-08", "score": 77 },
+        { "month": "2023-09", "score": 78 },
+        { "month": "2023-10", "score": 79 },
+        { "month": "2023-11", "score": 80 },
+        { "month": "2023-12", "score": 81 },
+        { "month": "2024-01", "score": 84 }
+      ]
+    }
+  ]
+}
+

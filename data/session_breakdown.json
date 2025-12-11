@@ -1,0 +1,703 @@
+{
+  "session_001": {
+    "sessionId": "session_001",
+    "sessionName": "Introduction to Video Processing",
+    "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+    "duration": 1800,
+    "timeline": {
+      "audio": [
+        {
+          "startTime": 0,
+          "endTime": 300,
+          "pace": 150,
+          "pauses": 3,
+          "type": "normal"
+        },
+        {
+          "startTime": 300,
+          "endTime": 600,
+          "pace": 190,
+          "pauses": 1,
+          "type": "fast",
+          "message": "Pacing dropped here – speaking speed increased to 190 wpm"
+        },
+        {
+          "startTime": 600,
+          "endTime": 900,
+          "pace": 145,
+          "pauses": 4,
+          "type": "normal"
+        },
+        {
+          "startTime": 900,
+          "endTime": 1200,
+          "pace": 175,
+          "pauses": 2,
+          "type": "moderate"
+        },
+        {
+          "startTime": 1200,
+          "endTime": 1500,
+          "pace": 140,
+          "pauses": 5,
+          "type": "normal"
+        },
+        {
+          "startTime": 1500,
+          "endTime": 1800,
+          "pace": 155,
+          "pauses": 3,
+          "type": "normal"
+        }
+      ],
+      "video": [
+        {
+          "startTime": 0,
+          "endTime": 400,
+          "eyeContact": 85,
+          "gestures": 8,
+          "type": "good"
+        },
+        {
+          "startTime": 400,
+          "endTime": 750,
+          "eyeContact": 45,
+          "gestures": 2,
+          "type": "poor",
+          "message": "Eye contact dropped significantly"
+        },
+        {
+          "startTime": 750,
+          "endTime": 1200,
+          "eyeContact": 90,
+          "gestures": 12,
+          "type": "excellent"
+        },
+        {
+          "startTime": 1200,
+          "endTime": 1800,
+          "eyeContact": 80,
+          "gestures": 7,
+          "type": "good"
+        }
+      ],
+      "transcript": [
+        {
+          "startTime": 0,
+          "endTime": 120,
+          "text": "Welcome everyone to today's session on video processing. Let's start with the basics.",
+          "keyPhrases": ["welcome", "video processing", "basics"]
+        },
+        {
+          "startTime": 300,
+          "endTime": 420,
+          "text": "Now we'll dive into advanced techniques and algorithms that you need to understand quickly.",
+          "keyPhrases": ["advanced techniques", "algorithms", "understand quickly"]
+        },
+        {
+          "startTime": 600,
+          "endTime": 720,
+          "text": "Let me pause here for questions. Does anyone have any concerns?",
+          "keyPhrases": ["pause", "questions", "concerns"]
+        },
+        {
+          "startTime": 900,
+          "endTime": 1020,
+          "text": "The key concept here is frame rate optimization and compression ratios.",
+          "keyPhrases": ["frame rate", "optimization", "compression"]
+        },
+        {
+          "startTime": 1200,
+          "endTime": 1320,
+          "text": "In conclusion, remember these three important principles we discussed today.",
+          "keyPhrases": ["conclusion", "principles", "discussed"]
+        }
+      ],
+      "scoreDips": [
+        {
+          "timestamp": 340,
+          "score": 65,
+          "message": "Pacing dropped here – speaking speed increased to 190 wpm",
+          "type": "audio"
+        },
+        {
+          "timestamp": 450,
+          "score": 58,
+          "message": "Eye contact dropped significantly",
+          "type": "video"
+        },
+        {
+          "timestamp": 720,
+          "score": 72,
+          "message": "Brief pause in engagement",
+          "type": "engagement"
+        }
+      ],
+      "scorePeaks": [
+        {
+          "timestamp": 150,
+          "score": 95,
+          "message": "Excellent clarity and engagement",
+          "type": "overall"
+        },
+        {
+          "timestamp": 850,
+          "score": 92,
+          "message": "Strong eye contact and clear explanations",
+          "type": "video"
+        },
+        {
+          "timestamp": 1100,
+          "score": 94,
+          "message": "Perfect pacing and clarity",
+          "type": "audio"
+        }
+      ]
+    },
+    "metrics": [
+      {
+        "name": "Clarity",
+        "score": 72,
+        "confidenceInterval": [68, 76],
+        "whatHelped": [
+          "Clear definitions provided",
+          "Good use of examples",
+          "Structured explanations"
+        ],
+        "whatHurt": [
+          "Jargon overload in first 5 mins",
+          "Rapid speech in middle section",
+          "Technical terms without context"
+        ]
+      },
+      {
+        "name": "Engagement",
+        "score": 85,
+        "confidenceInterval": [81, 89],
+        "whatHelped": [
+          "Interactive questions",
+          "Good eye contact in second half",
+          "Varied pacing"
+        ],
+        "whatHurt": [
+          "Low eye contact in minutes 6-12",
+          "Fewer gestures in middle section",
+          "Long monologue without breaks"
+        ]
+      },
+      {
+        "name": "Pacing",
+        "score": 78,
+        "confidenceInterval": [74, 82],
+        "whatHelped": [
+          "Good pauses for questions",
+          "Steady pace in opening",
+          "Appropriate speed in conclusion"
+        ],
+        "whatHurt": [
+          "Speaking speed increased to 190 wpm at 5:00",
+          "Rushed through technical section",
+          "Inconsistent pacing"
+        ]
+      },
+      {
+        "name": "Eye Contact",
+        "score": 75,
+        "confidenceInterval": [71, 79],
+        "whatHelped": [
+          "Strong eye contact in opening",
+          "Good engagement in Q&A section",
+          "Consistent focus in conclusion"
+        ],
+        "whatHurt": [
+          "Eye contact dropped to 45% at 6:40",
+          "Looking at notes too frequently",
+          "Distracted by screen in middle section"
+        ]
+      },
+      {
+        "name": "Gestures",
+        "score": 82,
+        "confidenceInterval": [78, 86],
+        "whatHelped": [
+          "Expressive hand movements",
+          "Good use of gestures for emphasis",
+          "Natural body language"
+        ],
+        "whatHurt": [
+          "Fewer gestures in technical section",
+          "Repetitive movements",
+          "Limited gestures during explanation"
+        ]
+      },
+      {
+        "name": "Overall",
+        "score": 89,
+        "confidenceInterval": [85, 93],
+        "whatHelped": [
+          "Well-structured presentation",
+          "Good balance of content",
+          "Effective use of examples"
+        ],
+        "whatHurt": [
+          "Pacing issues in middle section",
+          "Eye contact drop",
+          "Jargon without explanation"
+        ]
+      }
+    ]
+  },
+  "session_002": {
+    "sessionId": "session_002",
+    "sessionName": "Advanced Video Analysis Techniques",
+    "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+    "duration": 2100,
+    "timeline": {
+      "audio": [
+        {
+          "startTime": 0,
+          "endTime": 350,
+          "pace": 145,
+          "pauses": 4,
+          "type": "normal"
+        },
+        {
+          "startTime": 350,
+          "endTime": 700,
+          "pace": 160,
+          "pauses": 3,
+          "type": "moderate"
+        },
+        {
+          "startTime": 700,
+          "endTime": 1050,
+          "pace": 148,
+          "pauses": 5,
+          "type": "normal"
+        },
+        {
+          "startTime": 1050,
+          "endTime": 1400,
+          "pace": 152,
+          "pauses": 3,
+          "type": "normal"
+        },
+        {
+          "startTime": 1400,
+          "endTime": 1750,
+          "pace": 155,
+          "pauses": 4,
+          "type": "normal"
+        },
+        {
+          "startTime": 1750,
+          "endTime": 2100,
+          "pace": 150,
+          "pauses": 4,
+          "type": "normal"
+        }
+      ],
+      "video": [
+        {
+          "startTime": 0,
+          "endTime": 500,
+          "eyeContact": 88,
+          "gestures": 10,
+          "type": "excellent"
+        },
+        {
+          "startTime": 500,
+          "endTime": 1000,
+          "eyeContact": 85,
+          "gestures": 9,
+          "type": "good"
+        },
+        {
+          "startTime": 1000,
+          "endTime": 1500,
+          "eyeContact": 90,
+          "gestures": 11,
+          "type": "excellent"
+        },
+        {
+          "startTime": 1500,
+          "endTime": 2100,
+          "eyeContact": 87,
+          "gestures": 8,
+          "type": "good"
+        }
+      ],
+      "transcript": [
+        {
+          "startTime": 0,
+          "endTime": 140,
+          "text": "Today we'll explore advanced video analysis techniques that will enhance your understanding.",
+          "keyPhrases": ["advanced", "video analysis", "enhance understanding"]
+        },
+        {
+          "startTime": 400,
+          "endTime": 540,
+          "text": "Let's examine the key algorithms and their practical applications.",
+          "keyPhrases": ["algorithms", "practical applications"]
+        },
+        {
+          "startTime": 800,
+          "endTime": 940,
+          "text": "I'd like to hear your thoughts on this approach. Any questions?",
+          "keyPhrases": ["thoughts", "approach", "questions"]
+        },
+        {
+          "startTime": 1200,
+          "endTime": 1340,
+          "text": "The implementation details are crucial for achieving optimal performance.",
+          "keyPhrases": ["implementation", "optimal performance"]
+        },
+        {
+          "startTime": 1600,
+          "endTime": 1740,
+          "text": "To summarize, these techniques form the foundation of modern video processing.",
+          "keyPhrases": ["summarize", "foundation", "modern video processing"]
+        }
+      ],
+      "scoreDips": [],
+      "scorePeaks": [
+        {
+          "timestamp": 200,
+          "score": 96,
+          "message": "Excellent opening with clear explanations",
+          "type": "overall"
+        },
+        {
+          "timestamp": 1100,
+          "score": 94,
+          "message": "Strong engagement and clarity",
+          "type": "engagement"
+        }
+      ]
+    },
+    "metrics": [
+      {
+        "name": "Clarity",
+        "score": 88,
+        "confidenceInterval": [84, 92],
+        "whatHelped": [
+          "Clear explanations throughout",
+          "Well-structured content",
+          "Good use of examples"
+        ],
+        "whatHurt": [
+          "Minor technical jargon",
+          "Could use more visual aids"
+        ]
+      },
+      {
+        "name": "Engagement",
+        "score": 91,
+        "confidenceInterval": [87, 95],
+        "whatHelped": [
+          "Consistent eye contact",
+          "Interactive questions",
+          "Engaging delivery"
+        ],
+        "whatHurt": [
+          "Slight drop in middle section"
+        ]
+      },
+      {
+        "name": "Pacing",
+        "score": 85,
+        "confidenceInterval": [81, 89],
+        "whatHelped": [
+          "Consistent pacing",
+          "Good use of pauses",
+          "Appropriate speed"
+        ],
+        "whatHurt": [
+          "Slightly fast in technical sections"
+        ]
+      },
+      {
+        "name": "Eye Contact",
+        "score": 88,
+        "confidenceInterval": [84, 92],
+        "whatHelped": [
+          "Strong eye contact throughout",
+          "Good engagement with audience",
+          "Natural focus"
+        ],
+        "whatHurt": [
+          "Brief moments looking at notes"
+        ]
+      },
+      {
+        "name": "Gestures",
+        "score": 89,
+        "confidenceInterval": [85, 93],
+        "whatHelped": [
+          "Expressive and natural gestures",
+          "Good emphasis on key points",
+          "Varied movements"
+        ],
+        "whatHurt": [
+          "Could use more gestures in technical sections"
+        ]
+      },
+      {
+        "name": "Overall",
+        "score": 92,
+        "confidenceInterval": [88, 96],
+        "whatHelped": [
+          "Excellent overall performance",
+          "Well-balanced presentation",
+          "Strong engagement"
+        ],
+        "whatHurt": [
+          "Minor areas for improvement"
+        ]
+      }
+    ]
+  },
+  "session_003": {
+    "sessionId": "session_003",
+    "sessionName": "Video Chunking Best Practices",
+    "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+    "duration": 1650,
+    "timeline": {
+      "audio": [
+        {
+          "startTime": 0,
+          "endTime": 275,
+          "pace": 148,
+          "pauses": 3,
+          "type": "normal"
+        },
+        {
+          "startTime": 275,
+          "endTime": 495,
+          "pace": 185,
+          "pauses": 1,
+          "type": "fast",
+          "message": "Pacing increased significantly"
+        },
+        {
+          "startTime": 495,
+          "endTime": 825,
+          "pace": 142,
+          "pauses": 5,
+          "type": "normal"
+        },
+        {
+          "startTime": 825,
+          "endTime": 1100,
+          "pace": 170,
+          "pauses": 2,
+          "type": "moderate"
+        },
+        {
+          "startTime": 1100,
+          "endTime": 1375,
+          "pace": 150,
+          "pauses": 4,
+          "type": "normal"
+        },
+        {
+          "startTime": 1375,
+          "endTime": 1650,
+          "pace": 155,
+          "pauses": 3,
+          "type": "normal"
+        }
+      ],
+      "video": [
+        {
+          "startTime": 0,
+          "endTime": 400,
+          "eyeContact": 82,
+          "gestures": 7,
+          "type": "good"
+        },
+        {
+          "startTime": 400,
+          "endTime": 800,
+          "eyeContact": 50,
+          "gestures": 3,
+          "type": "poor",
+          "message": "Eye contact and gestures decreased"
+        },
+        {
+          "startTime": 800,
+          "endTime": 1200,
+          "eyeContact": 78,
+          "gestures": 6,
+          "type": "good"
+        },
+        {
+          "startTime": 1200,
+          "endTime": 1650,
+          "eyeContact": 85,
+          "gestures": 8,
+          "type": "good"
+        }
+      ],
+      "transcript": [
+        {
+          "startTime": 0,
+          "endTime": 110,
+          "text": "Let's discuss video chunking best practices and how to implement them effectively.",
+          "keyPhrases": ["video chunking", "best practices", "implement"]
+        },
+        {
+          "startTime": 300,
+          "endTime": 410,
+          "text": "The key is to balance chunk size with processing efficiency and quality.",
+          "keyPhrases": ["chunk size", "processing efficiency", "quality"]
+        },
+        {
+          "startTime": 600,
+          "endTime": 710,
+          "text": "Are there any specific challenges you've encountered with chunking?",
+          "keyPhrases": ["challenges", "chunking"]
+        },
+        {
+          "startTime": 900,
+          "endTime": 1010,
+          "text": "Let me show you some practical examples and code snippets.",
+          "keyPhrases": ["practical examples", "code snippets"]
+        },
+        {
+          "startTime": 1200,
+          "endTime": 1310,
+          "text": "Remember these principles when implementing your own chunking solution.",
+          "keyPhrases": ["principles", "implementing", "chunking solution"]
+        }
+      ],
+      "scoreDips": [
+        {
+          "timestamp": 315,
+          "score": 62,
+          "message": "Pacing increased significantly",
+          "type": "audio"
+        },
+        {
+          "timestamp": 490,
+          "score": 55,
+          "message": "Eye contact and gestures decreased",
+          "type": "video"
+        },
+        {
+          "timestamp": 1380,
+          "score": 68,
+          "message": "Brief engagement drop",
+          "type": "engagement"
+        }
+      ],
+      "scorePeaks": [
+        {
+          "timestamp": 180,
+          "score": 91,
+          "message": "Strong opening with clear explanations",
+          "type": "overall"
+        },
+        {
+          "timestamp": 950,
+          "score": 88,
+          "message": "Good recovery with examples",
+          "type": "content"
+        }
+      ]
+    },
+    "metrics": [
+      {
+        "name": "Clarity",
+        "score": 80,
+        "confidenceInterval": [76, 84],
+        "whatHelped": [
+          "Good structure",
+          "Clear examples",
+          "Practical demonstrations"
+        ],
+        "whatHurt": [
+          "Rushed through some concepts",
+          "Technical terms without context",
+          "Fast speech in middle section"
+        ]
+      },
+      {
+        "name": "Engagement",
+        "score": 78,
+        "confidenceInterval": [74, 82],
+        "whatHelped": [
+          "Interactive questions",
+          "Good examples",
+          "Recovery in second half"
+        ],
+        "whatHurt": [
+          "Low eye contact in minutes 6-13",
+          "Fewer gestures in middle",
+          "Engagement drop at 22:30"
+        ]
+      },
+      {
+        "name": "Pacing",
+        "score": 72,
+        "confidenceInterval": [68, 76],
+        "whatHelped": [
+          "Good pace in opening",
+          "Appropriate pauses",
+          "Steady conclusion"
+        ],
+        "whatHurt": [
+          "Speed increased to 185 wpm at 4:35",
+          "Rushed through technical content",
+          "Inconsistent pacing"
+        ]
+      },
+      {
+        "name": "Eye Contact",
+        "score": 74,
+        "confidenceInterval": [70, 78],
+        "whatHelped": [
+          "Strong opening",
+          "Good recovery",
+          "Consistent in conclusion"
+        ],
+        "whatHurt": [
+          "Dropped to 50% at 6:40",
+          "Looking at screen too much",
+          "Distracted in middle section"
+        ]
+      },
+      {
+        "name": "Gestures",
+        "score": 76,
+        "confidenceInterval": [72, 80],
+        "whatHelped": [
+          "Natural movements",
+          "Good emphasis",
+          "Expressive in examples"
+        ],
+        "whatHurt": [
+          "Fewer gestures in technical section",
+          "Limited movements at 6:40",
+          "Could be more varied"
+        ]
+      },
+      {
+        "name": "Overall",
+        "score": 85,
+        "confidenceInterval": [81, 89],
+        "whatHelped": [
+          "Good content structure",
+          "Practical examples",
+          "Clear explanations when paced well"
+        ],
+        "whatHurt": [
+          "Pacing issues",
+          "Eye contact drop",
+          "Inconsistent engagement"
+        ]
+      }
+    ]
+  }
+}
+

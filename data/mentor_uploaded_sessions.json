@@ -1,0 +1,564 @@
+{
+  "sessions": [
+    {
+      "id": "session_3df78536",
+      "sessionId": "session_3df78536",
+      "sessionName": "dikshat_mentor_scoring_video",
+      "created_at": "2025-12-11T17:04:40.813925",
+      "weakMoments": [],
+      "uploadedFile": "2055306022424293a2ba6d15a7d46ccc.mp4",
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af"
+    },
+    {
+      "id": "session_d5c02b9f",
+      "sessionId": "session_d5c02b9f",
+      "sessionName": "dikshat_mentor_scoring_video",
+      "created_at": "2025-12-11T17:03:41.765542",
+      "weakMoments": [],
+      "uploadedFile": "fd59732e48d94b62abf724c07e67e6ae.mp4",
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af",
+      "score": 61
+    },
+    {
+      "id": "session_5017247b",
+      "sessionId": "session_5017247b",
+      "sessionName": "dikshat_mentor_scoring_video",
+      "created_at": "2025-12-11T16:49:02.918282",
+      "weakMoments": [],
+      "uploadedFile": "8f74fbf97d96430f9bb282eaa1600e9a.mp4",
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af",
+      "score": 61
+    },
+    {
+      "id": "session_a3554dd9",
+      "sessionId": "session_a3554dd9",
+      "sessionName": "dikshat_mentor_scoring_video",
+      "created_at": "2025-12-11T16:35:00.589174",
+      "weakMoments": [],
+      "uploadedFile": "d3a1eb9ce084455381be6c6f8330029e.mp4",
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af",
+      "score": 61
+    },
+    {
+      "id": "session_65e40860",
+      "sessionId": "session_65e40860",
+      "sessionName": "dikshat_mentor_scoring_video",
+      "created_at": "2025-12-11T16:25:02.813201",
+      "weakMoments": [],
+      "uploadedFile": "6b6b6747af3c4a9b8f6a0c87d5ee7aed.mp4",
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af",
+      "score": 61
+    },
+    {
+      "id": "session_8d00cfc9",
+      "sessionId": "session_8d00cfc9",
+      "sessionName": "dikshat_mentor_scoring_video",
+      "created_at": "2025-12-11T16:18:03.341103",
+      "weakMoments": [],
+      "uploadedFile": "4993227a80aa46b3a1ef7a8254bca5f8.mp4",
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af",
+      "score": 61
+    },
+    {
+      "id": "session_c516eea7",
+      "sessionId": "session_c516eea7",
+      "sessionName": "dikshat_mentor_scoring_video",
+      "created_at": "2025-12-11T16:11:13.027400",
+      "weakMoments": [],
+      "uploadedFile": "a768323abe684373a7ec16c78e8dff7f.mp4",
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af",
+      "score": 61
+    },
+    {
+      "id": "session_7be04d50",
+      "sessionId": "session_7be04d50",
+      "sessionName": "dikshat_mentor_scoring_video",
+      "created_at": "2025-12-11T16:03:17.680202",
+      "weakMoments": [
+        {
+          "timestamp": "00:00:22",
+          "message": "When you actually buy and place a physical coffee machine on a table, that's like creating an object, an instance of our coffee machine class. Now let's dive into the core concepts of OOP."
+        },
+        {
+          "timestamp": "00:00:30",
+          "message": "Think of a medicine capsule: it contains the medicine inside, and that internal medicine is hidden and protected by the outer shell of the capsule."
+        },
+        {
+          "timestamp": "00:00:44",
+          "message": "In programming, encapsulation is similar: it's the bundling of data (like the coffee machine's internal state) and the methods that operate on that data (like making coffee) into a single unit, while also restricting direct access to some of the component's internal details, which is known as data hiding."
+        },
+        {
+          "timestamp": "00:00:54",
+          "message": "Suppose I want an espresso. How do I tell the machine? I simply press a button labeled 'Espresso', and it delivers the drink."
+        },
+        {
+          "timestamp": "00:01:00",
+          "message": "I don't need to know the complex internal steps the machine takes to make an espresso; those details are handled internally by the machine."
+        },
+        {
+          "timestamp": "00:01:04",
+          "message": "So, the machine is abstracting away the complex process of making an espresso, presenting only a simple interface\u2014a button\u2014for me to use."
+        },
+        {
+          "timestamp": "00:01:30",
+          "message": "The premium one, however, can make a cappuccino, a latte, and it definitely still makes an espresso and heats up water."
+        },
+        {
+          "timestamp": "00:01:36",
+          "message": "So, the premium machine is inheriting the core functionalities of the base model and also adding its own unique features."
+        },
+        {
+          "timestamp": "00:01:49",
+          "message": "Now, moving on to the last pillar, which is polymorphism. It might sound like a complex term, but its concept is quite simple."
+        },
+        {
+          "timestamp": "00:02:13",
+          "message": "So, the same function, invoked by the same 'brew' button, performs multiple different actions depending on the specific coffee machine, demonstrating how it appears in multiple forms."
+        },
+        {
+          "timestamp": "00:02:19",
+          "message": "That is polymorphism."
+        }
+      ],
+      "uploadedFile": "0282bd20c25d4f3aac4e15cde1941d2b.mp4",
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af",
+      "score": 82
+    },
+    {
+      "id": "session_f1692094",
+      "sessionId": "session_f1692094",
+      "sessionName": "dikshat_mentor_scoring_video",
+      "created_at": "2025-12-11T15:55:03.006666",
+      "weakMoments": [],
+      "uploadedFile": "54fd388de0fc4a6fa8a902eaf79ad9b5.mp4",
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af",
+      "score": 81
+    },
+    {
+      "id": "session_888c0ad2",
+      "sessionId": "session_888c0ad2",
+      "sessionName": "dikshat_mentor_scoring_video",
+      "created_at": "2025-12-11T15:43:24.989645",
+      "weakMoments": [
+        {
+          "timestamp": "00:00:00",
+          "message": "Hello everyone, I am Vik Shant. Today we will be learning about OOPS, which stands for Object-Oriented Programming, a fundamental paradigm in software development."
+        },
+        {
+          "timestamp": "00:00:04",
+          "message": "OOPS, or Object-Oriented Programming, is what we'll explore today using a simple example of a coffee machine."
+        },
+        {
+          "timestamp": "00:01:30",
+          "message": "And the premium one, it makes cappuccino, it makes a latte, and it definitely makes an espresso and heats up water. So it is inheriting the properties of the base one and also adding its own properties. Now think in terms of cars: you have a base version, and then you have a higher-end model. Obviously, the higher-end model has all the features of the base one plus some extra features. Now, moving on to the last pillar, which is polymorphism. It may seem like a complex term, but it is really simple, meaning 'many forms' or 'multiple forms'."
+        }
+      ],
+      "uploadedFile": "1b0e5d3702a54f4cb9ca772ae84244f2.mp4",
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af",
+      "score": 82
+    },
+    {
+      "id": "session_bfb665dd",
+      "sessionId": "session_bfb665dd",
+      "sessionName": "dikshat_mentor_scoring_video",
+      "created_at": "2025-12-11T15:37:59.837147",
+      "weakMoments": [
+        {
+          "timestamp": "00:00:00",
+          "message": "So hello everyone, I am Vik Shant, so today we will be learning about OOP (Object-Oriented Programming)."
+        },
+        {
+          "timestamp": "00:00:22",
+          "message": "You just buy it and place it on a table, like an object. Now, let's delve into the core concepts of OOP."
+        },
+        {
+          "timestamp": "00:00:27",
+          "message": "OOP has four main pillars. The first one is encapsulation. Now, what is a capsule?"
+        },
+        {
+          "timestamp": "00:00:44",
+          "message": "This is encapsulation: bundling data and the methods that operate on that data, and hiding the internal details under an outer casing."
+        },
+        {
+          "timestamp": "00:00:54",
+          "message": "Now, suppose I want to make an espresso. How do you interact with the machine to do that?"
+        },
+        {
+          "timestamp": "00:01:29",
+          "message": "And the premium one makes cappuccino, it makes latte, and it definitely still makes an espresso and heats up water, right?"
+        },
+        {
+          "timestamp": "00:01:36",
+          "message": "So, it is inheriting the properties of the base one and also adding its own unique properties."
+        },
+        {
+          "timestamp": "00:01:49",
+          "message": "Now, moving on to the last one, which is polymorphism."
+        },
+        {
+          "timestamp": "00:02:02",
+          "message": "Now, both of these machines have a 'brew' button."
+        },
+        {
+          "timestamp": "00:02:12",
+          "message": "Now, the same function, or the same button, performs multiple functions."
+        },
+        {
+          "timestamp": "00:02:20",
+          "message": "That's my time, guys. Thank you for listening."
+        }
+      ],
+      "uploadedFile": "e0afb1daf8004f62a14b6ba5cde53975.mp4",
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af",
+      "score": 81
+    },
+    {
+      "id": "session_47179673",
+      "sessionId": "session_47179673",
+      "sessionName": "dikshat_mentor_scoring_video",
+      "created_at": "2025-12-11T15:29:58.134939",
+      "weakMoments": [
+        {
+          "timestamp": "00:00:00",
+          "message": "Hello everyone, I am Vik Shant, and today we will be learning about OOP, or Object-Oriented Programming, which is a powerful programming paradigm based on the concept of 'objects' that can contain data and code."
+        },
+        {
+          "timestamp": "00:00:07",
+          "message": "We will take a simple example of a coffee machine. Think of the coffee machine as a class; it's like a blueprint that defines the methods of a coffee machine, such as making an espresso, making a cappuccino, or making a latte."
+        },
+        {
+          "timestamp": "00:00:19",
+          "message": "Now, when you buy a real coffee machine, that physical machine is an object, an actual instance created from the class blueprint, which you can place on a table and use."
+        },
+        {
+          "timestamp": "00:00:30",
+          "message": "Now, what is a capsule? Just like a medicine capsule has medicine inside, hidden by its outer shell, encapsulation in programming involves bundling data and the methods that operate on that data within a single unit, often an object, and hiding its internal details."
+        },
+        {
+          "timestamp": "00:00:44",
+          "message": "This is encapsulation: bundling the internal data (like wiring and heating elements) and the methods that operate on them (like making coffee) together within a single unit, and often hiding the complex internal workings from the outside world while providing a controlled interface."
+        },
+        {
+          "timestamp": "00:00:54",
+          "message": "Now suppose I want an espresso. How do you interact with the machine? You simply press a button, and it gives you an espresso."
+        },
+        {
+          "timestamp": "00:01:00",
+          "message": "I don't care about the complex internal steps the machine takes to make an espresso, right? That entire process is handled internally by the machine."
+        },
+        {
+          "timestamp": "00:01:04",
+          "message": "So, the machine is abstracting away the complex function of making an espresso and simply providing me with a straightforward button to achieve the desired outcome."
+        },
+        {
+          "timestamp": "00:01:30",
+          "message": "And the premium one, it makes cappuccino, it makes latte, and it also definitely makes an espresso and heats up water, right?"
+        },
+        {
+          "timestamp": "00:01:36",
+          "message": "So, the premium machine is inheriting all the properties and methods of the base model and then adding its own unique properties and methods."
+        },
+        {
+          "timestamp": "00:01:49",
+          "message": "Now moving on to the last pillar, which is polymorphism."
+        },
+        {
+          "timestamp": "00:02:13",
+          "message": "Now, the same function, triggered by the same 'brew' button, performs multiple functions depending on the specific object, appearing in multiple forms."
+        },
+        {
+          "timestamp": "00:02:19",
+          "message": "That is polymorphism."
+        }
+      ],
+      "uploadedFile": "944dc7d3f5e24e2fbacff7268d299621.mp4",
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af",
+      "score": 81
+    },
+    {
+      "id": "session_eb1f7879",
+      "sessionName": "dikshat_mentor_scoring_video",
+      "date": "2025-12-11T13:05:19Z",
+      "score": 0,
+      "weakMoments": [
+        {
+          "timestamp": "00:00:00",
+          "message": "So hello everyone, I am Vick Shant. Today we will be learning about OOP, which stands for Object-Oriented Programming."
+        },
+        {
+          "timestamp": "00:00:04",
+          "message": "In Object-Oriented Programming, we'll use a simple example of a coffee machine. Think of the coffee machine as a class, which is like a blueprint."
+        },
+        {
+          "timestamp": "00:00:13",
+          "message": "This blueprint defines the functions of a coffee machine, like making a coffee, a cappuccino, or a latte. When you buy a real coffee machine, it's like an object\u2014you buy it and place it on a table. Now let's dive into the core concepts of OOP."
+        },
+        {
+          "timestamp": "00:00:27",
+          "message": "OOP has four different pillars, or core principles. The first one is encapsulation."
+        },
+        {
+          "timestamp": "00:00:30",
+          "message": "What is encapsulation? Think of a medicine capsule: it holds medicine inside, hidden by the outer shell. In programming, encapsulation is about bundling data and the methods that operate on that data into a single unit, and hiding the internal details."
+        },
+        {
+          "timestamp": "00:00:42",
+          "message": "All the internal wiring, heating elements, and coffee grinders are hidden under the outer casing. This is encapsulation: bundling related data and methods together and hiding their internal workings from the outside."
+        },
+        {
+          "timestamp": "00:00:54",
+          "message": "Now, suppose I want to make an espresso. How do I interact with the machine? I simply press a button, and it gives me an espresso."
+        },
+        {
+          "timestamp": "00:01:00",
+          "message": "I don't care about the complex internal steps to make an espresso; that process is handled by the machine internally."
+        },
+        {
+          "timestamp": "00:01:04",
+          "message": "So, the machine is abstracting the complex function of making an espresso and simply providing me with a button to achieve the desired outcome."
+        },
+        {
+          "timestamp": "00:01:30",
+          "message": "And the premium one makes cappuccino and latte, and it definitely also makes an espresso and heats up water, right?"
+        },
+        {
+          "timestamp": "00:01:36",
+          "message": "So, the premium machine is inheriting the properties and behaviors of the base model while also adding its own unique features."
+        },
+        {
+          "timestamp": "00:01:49",
+          "message": "Now moving on to the last one, which is polymorphism. It may seem like a complex term, but it's really simple."
+        },
+        {
+          "timestamp": "00:02:13",
+          "message": "So, the same function, triggered by the same button, performs multiple functions or appears in multiple forms depending on the object."
+        },
+        {
+          "timestamp": "00:02:19",
+          "message": "That is polymorphism. Thank you for your time, everyone."
+        }
+      ],
+      "studentCount": 0,
+      "uploadedFile": "93b4cfb2dd6444609b5881079fcb7204.mp4"
+    },
+    {
+      "id": "session_7dfdd91e",
+      "sessionName": "dikshat_mentor_scoring_video",
+      "date": "2025-12-11T12:40:01Z",
+      "score": 0,
+      "weakMoments": [
+        {
+          "timestamp": "00:00:00",
+          "message": "So hello everyone, I am Vik Shant, and today we will be learning about OOPS, which stands for Object-Oriented Programming, a paradigm focused on organizing code around objects rather than functions."
+        },
+        {
+          "timestamp": "00:00:22",
+          "message": "You buy it and place it on a table, like a tangible object. Now, let's delve into the core principles, or pillars, of Object-Oriented Programming."
+        },
+        {
+          "timestamp": "00:00:30",
+          "message": "Think of a physical capsule: it contains medicine inside, which is hidden and protected by the outer casing."
+        },
+        {
+          "timestamp": "00:00:44",
+          "message": "In programming, encapsulation is like bundling related data (attributes) and the methods (functions) that operate on that data into a single unit, while hiding the internal implementation details."
+        },
+        {
+          "timestamp": "00:00:54",
+          "message": "Now, suppose I want an espresso. How do I interact with the machine? I simply press a button, and it gives me an espresso."
+        },
+        {
+          "timestamp": "00:01:00",
+          "message": "I don't care about the complex internal steps required to make an espresso; that intricate process is handled by the machine itself."
+        },
+        {
+          "timestamp": "00:01:04",
+          "message": "The machine is abstracting away the complex function of making an espresso and simply providing me with a straightforward button to achieve the desired result."
+        },
+        {
+          "timestamp": "00:01:30",
+          "message": "And the premium one makes cappuccino, latte, and it also definitely makes an espresso and heats up water, building on the basic functionalities."
+        },
+        {
+          "timestamp": "00:01:36",
+          "message": "So, the premium machine is inheriting all the properties and functionalities of the base model, and then adding its own unique properties and features."
+        },
+        {
+          "timestamp": "00:01:49",
+          "message": "Now, moving on to the last pillar, which is polymorphism."
+        },
+        {
+          "timestamp": "00:02:13",
+          "message": "Here, the same function, triggered by the same button, performs multiple different actions or appears in multiple forms depending on the object it's called on."
+        },
+        {
+          "timestamp": "00:02:19",
+          "message": "That is polymorphism."
+        }
+      ],
+      "studentCount": 0,
+      "uploadedFile": "c1e7bd448a0a4f0e8757255cc6849328.mp4"
+    },
+    {
+      "id": "session_0aae1bef",
+      "sessionName": "dikshat_mentor_scoring_video",
+      "date": "2025-12-11T12:28:49Z",
+      "score": 0,
+      "weakMoments": [],
+      "studentCount": 0,
+      "uploadedFile": "e2788eb830a340178bc229cfd5b15af7.mp4"
+    },
+    {
+      "id": "session_6f08a956",
+      "sessionName": "dikshat_mentor_scoring_video",
+      "date": "2025-12-11T12:15:53Z",
+      "score": 0,
+      "weakMoments": [],
+      "studentCount": 0,
+      "uploadedFile": "f4e168cf9cb54878aa94504ce4ecb965.mp4"
+    },
+    {
+      "id": "session_0e48089d",
+      "sessionName": "dikshat_mentor_scoring_video",
+      "date": "2025-12-11T12:05:53Z",
+      "score": 0,
+      "weakMoments": [
+        {
+          "timestamp": "00:00:00",
+          "message": "Now this is encapsulation: bundling data (like the coffee machine's internal state) and the methods that operate on that data (like making coffee) into a single unit, and controlling access to that internal state, often referred to as information hiding."
+        }
+      ],
+      "studentCount": 0,
+      "uploadedFile": "d63d4bf1e2b04fe0b93604cbed50d9f5.mp4"
+    },
+    {
+      "id": "session_7e8a19b4",
+      "sessionName": "dikshat_mentor_scoring_video",
+      "date": "2025-12-11T11:33:48Z",
+      "score": 0,
+      "weakMoments": [],
+      "studentCount": 0,
+      "uploadedFile": "405fc04765e94ef3a5b75c771c0d1796.mp4"
+    },
+    {
+      "id": "session_5abce0af",
+      "sessionName": "43295-436026111",
+      "date": "2025-12-10T18:17:52Z",
+      "score": 82,
+      "weakMoments": [
+        {
+          "timestamp": "00:01:20",
+          "message": "Clarify the problem statement earlier."
+        },
+        {
+          "timestamp": "00:04:10",
+          "message": "Add more examples for the algorithm."
+        }
+      ],
+      "studentCount": 18,
+      "uploadedFile": "5abce0afe2bd44c8ab2d3ff7122190e9.mp4"
+    },
+    {
+      "id": "session_5bcb4727",
+      "sessionName": "43295-436026111",
+      "date": "2025-12-10T18:15:09Z",
+      "score": 82,
+      "weakMoments": [
+        {
+          "timestamp": "00:01:20",
+          "message": "Clarify the problem statement earlier."
+        },
+        {
+          "timestamp": "00:04:10",
+          "message": "Add more examples for the algorithm."
+        }
+      ],
+      "studentCount": 18,
+      "uploadedFile": "5bcb47278f0f499695fdb0152e1eb357.mp4"
+    },
+    {
+      "id": "session_0b837dfd",
+      "sessionName": "43295-436026111",
+      "date": "2025-12-08T16:55:58Z",
+      "score": 82,
+      "weakMoments": [
+        {
+          "timestamp": "00:01:20",
+          "message": "Clarify the problem statement earlier."
+        },
+        {
+          "timestamp": "00:04:10",
+          "message": "Add more examples for the algorithm."
+        }
+      ],
+      "studentCount": 18,
+      "uploadedFile": "0b837dfdadd143e2a7a0186a675bb2b2.mp4"
+    },
+    {
+      "id": "session_fe465204",
+      "sessionName": "43295-436026111",
+      "date": "2025-12-08T09:27:37Z",
+      "score": 82,
+      "weakMoments": [
+        {
+          "timestamp": "00:01:20",
+          "message": "Clarify the problem statement earlier."
+        },
+        {
+          "timestamp": "00:04:10",
+          "message": "Add more examples for the algorithm."
+        }
+      ],
+      "studentCount": 18,
+      "uploadedFile": "fe4652043fd74113b42c3b29401b866b.mp4"
+    },
+    {
+      "id": "session_d250a3bd",
+      "sessionName": "43295-436026111",
+      "date": "2025-12-08T09:25:37Z",
+      "score": 82,
+      "weakMoments": [
+        {
+          "timestamp": "00:01:20",
+          "message": "Clarify the problem statement earlier."
+        },
+        {
+          "timestamp": "00:04:10",
+          "message": "Add more examples for the algorithm."
+        }
+      ],
+      "studentCount": 18,
+      "uploadedFile": "d250a3bd10514094bfc692af6a8fc14c.mp4"
+    },
+    {
+      "id": "session_17c806c2",
+      "sessionName": "43295-436026111",
+      "date": "2025-12-08T09:21:24Z",
+      "score": 82,
+      "weakMoments": [
+        {
+          "timestamp": "00:01:20",
+          "message": "Clarify the problem statement earlier."
+        },
+        {
+          "timestamp": "00:04:10",
+          "message": "Add more examples for the algorithm."
+        }
+      ],
+      "studentCount": 18,
+      "uploadedFile": "17c806c2479a4d3495d526656cdb8808.mp4"
+    }
+  ]
+}
