@@ -808,379 +808,59 @@ def get_uploaded_sessions(mentor_id):
     except Exception as e:
         return jsonify({'error': f'Failed to load uploaded sessions: {str(e)}'}), 500
 
-@app.route('/api/mentor/<mentor_id>/sessions/upload', methods=['POST'])
-def upload_mentor_session(mentor_id):
-    """Accept mentor video upload or YouTube URL + context, call analysis/diarization services and store results."""
-
-    # Accept either a direct file upload or a YouTube URL with context
-    yt_url = request.form.get('yt_url') or request.form.get('youtube_url')
-    context_text = request.form.get('context', '')
-    session_name = request.form.get('sessionName') or f'Uploaded Session {datetime.utcnow().strftime("%b %d %H:%M")}'
-    user_id = request.form.get('userId') or request.form.get('user_id') or None
-
-    file_path = None
-    upload_result = None
-    video_url = None
-    cloudinary_public_id = None
-
+def download_cloudinary_video(video_url, session_id):
+    """Download video from Cloudinary URL and save locally."""
     try:
-        # If a YouTube URL is provided, download it
-        if yt_url:
-            try:
-                file_path = download_youtube_video(yt_url)
-            except Exception as e:
-                return jsonify({'error': f'Failed to download YouTube video: {str(e)}'}), 400
-
-            saved_filename = os.path.basename(file_path)
-            
-            # Upload YouTube video to Cloudinary
-            try:
-                with open(file_path, 'rb') as f:
-                    upload_result = upload_video_to_cloudinary(
-                        f,
-                        mentor_id,
-                        f'session_{uuid.uuid4().hex[:8]}',
-                        saved_filename
-                    )
-                    video_url = upload_result['url']
-                    cloudinary_public_id = upload_result['public_id']
-                
-                # Clean up local file after uploading to Cloudinary
-                try:
-                    os.remove(file_path)
-                except:
-                    pass
-            except Exception as e:
-                return jsonify({'error': f'Failed to store video: {str(e)}'}), 500
-        else:
-            # Expecting a direct file upload
-            if 'file' not in request.files:
-                return jsonify({'error': 'No file provided'}), 400
-
-            file = request.files['file']
-            if file.filename == '':
-                return jsonify({'error': 'No file selected'}), 400
-
-            if not allowed_file(file.filename):
-                return jsonify({'error': 'File type not allowed'}), 400
-
-            unique_id = uuid.uuid4().hex
-            filename = secure_filename(file.filename)
-            file_ext = filename.rsplit('.', 1)[1].lower()
-            saved_filename = f"{unique_id}.{file_ext}"
-            
-            # Upload directly to Cloudinary
-            session_id = f'session_{uuid.uuid4().hex[:8]}'
-            try:
-                upload_result = upload_video_to_cloudinary(
-                    file.read(),
-                    mentor_id,
-                    session_id,
-                    saved_filename
-                )
-                video_url = upload_result['url']
-                cloudinary_public_id = upload_result['public_id']
-            except Exception as e:
-                return jsonify({'error': f'Failed to upload video: {str(e)}'}), 500
-
-        # Build session object base with complete schema structure
-        session_id = f'session_{uuid.uuid4().hex[:8]}'
-        # Extract duration from Cloudinary upload result
-        video_duration = 0
-        if isinstance(upload_result, dict) and 'duration' in upload_result:
-            video_duration = int(upload_result['duration'])
+        # Create temp filename for downloaded video
+        temp_filename = os.path.join(UPLOAD_FOLDER, f'cloudinary_{session_id}.mp4')
         
-        new_session = {
-            'sessionId': session_id,
-            'sessionName': session_name,
-            'videoUrl': video_url,  # Store Cloudinary URL directly
-            'cloudinaryPublicId': cloudinary_public_id,  # Store public ID for management
-            'duration': video_duration,  # Get from Cloudinary metadata
-            'mentorId': mentor_id,
-            'userId': user_id,
-            'uploadedFile': saved_filename,
-            'created_at': datetime.utcnow(),
-            'updated_at': datetime.utcnow(),
-            # Initialize with empty arrays - will be filled by Gemini during create_session
-            'timeline': {
-                'audio': [],
-                'video': [],
-                'transcript': [],
-                'scoreDips': [],
-                'scorePeaks': []
-            },
-            'metrics': [],
-            'weakMoments': []
-        }
-
-        # Call external analysis service (service 1) if available
-        analysis_result = None
-        analysis_filename = None
-        try:
-            # Send video URL to external services
-            if video_url:
-                analysis_url = 'https://meanwhile-mono-tested-wisdom.trycloudflare.com/api/v1/analyze-video'
-                data = {
-                    'context': context_text,
-                    'video_url': video_url  # Send Cloudinary URL instead of file
-                }
-                resp = requests.post(analysis_url, json=data, timeout=120)
-                if resp.ok:
-                    analysis_result = resp.json()
-                    analysis_filename = os.path.join(DATA_DIR, f'analysis_{session_id}.json')
-                    with open(analysis_filename, 'w') as af:
-                        json.dump(analysis_result, af)
-                else:
-                    # Log but continue
-                    try:
-                        analysis_result = resp.json()
-                    except Exception:
-                        analysis_result = {'error': f'Analysis service returned status {resp.status_code}'}
-        except Exception as e:
-            analysis_result = {'error': f'Failed to call analysis service: {str(e)}'}
-
-        # Call diarization service (service 2)
-        diarization_result = None
-        diarization_filename = None
-        try:
-            # Send video URL to external services
-            if video_url:
-                diarization_url = 'https://papers-mate-prefix-shortcuts.trycloudflare.com/process-video'
-                data = {'video_url': video_url}  # Send Cloudinary URL
-                resp2 = requests.post(diarization_url, json=data, timeout=120)
-                if resp2.ok:
-                    diarization_result = resp2.json()
-                    diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
-                    with open(diarization_filename, 'w') as df:
-                        json.dump(diarization_result, df)
-                else:
-                    try:
-                        diarization_result = resp2.json()
-                    except Exception:
-                        diarization_result = {'error': f'Diarization service returned status {resp2.status_code}'}
-        except Exception as e:
-            diarization_result = {'error': f'Failed to call diarization service: {str(e)}'}
-
-        # Attach analysis references into session document
-        if analysis_filename:
-            new_session['analysisFile'] = os.path.basename(analysis_filename)
-            new_session['analysis'] = analysis_result
-        else:
-            new_session['analysis'] = analysis_result
-
-        if diarization_filename:
-            new_session['diarizationFile'] = os.path.basename(diarization_filename)
-            new_session['diarization'] = diarization_result
-        else:
-            new_session['diarization'] = diarization_result
-
-        # Enrich session document using analysis & diarization results
-        try:
-            # Build metrics list from analysis_result with proper schema compliance
-            metrics = []
-            if isinstance(analysis_result, dict):
-                key_map = {
-                    'clarity': 'Clarity',
-                    'communication': 'Communication',
-                    'engagement': 'Engagement',
-                    'technical_depth': 'Technical Depth',
-                    'interaction': 'Interaction',
-                    'pacing': 'Pacing',
-                    'eye_contact': 'Eye Contact',
-                    'gestures': 'Gestures'
-                }
-                for k, label in key_map.items():
-                    val = analysis_result.get(k)
-                    score = None
-                    if isinstance(val, dict):
-                        score = val.get('score')
-                    elif isinstance(val, (int, float)):
-                        score = val
-                    if score is not None:
-                        try:
-                            score = int(float(score))
-                            # Ensure score is between 0 and 100
-                            score = max(0, min(100, score))
-                            metrics.append({
-                                'name': label,
-                                'score': score,
-                                'confidenceInterval': [max(0, score - 5), min(100, score + 5)],
-                                'whatHelped': [],
-                                'whatHurt': []
-                            })
-                        except Exception:
-                            pass
-
-                # Overall score
-                overall = analysis_result.get('overall_score') or analysis_result.get('overallScore')
-                if overall is not None:
-                    try:
-                        overall_score = int(float(overall))
-                        overall_score = max(0, min(100, overall_score))
-                        metrics.append({
-                            'name': 'Overall',
-                            'score': overall_score,
-                            'confidenceInterval': [max(0, overall_score - 5), min(100, overall_score + 5)],
-                            'whatHelped': [],
-                            'whatHurt': []
-                        })
-                    except Exception:
-                        pass
-
-            # Build weakMoments from diarization (sentences flagged for improvement)
-            weak_moments = []
-            timeline_transcript = []
-            try:
-                sentences = []
-                if isinstance(diarization_result, dict):
-                    sentences = diarization_result.get('sentences') or []
-
-                def _format_hms(sec):
-                    sec = int(sec or 0)
-                    h = sec // 3600
-                    m = (sec % 3600) // 60
-                    s = sec % 60
-                    return f"{h:02d}:{m:02d}:{s:02d}"
-
-                for s in sentences:
-                    start = s.get('start', 0)
-                    end = s.get('end', 0)
-                    text = s.get('text') or s.get('transcript') or ''
-                    timeline_transcript.append({
-                        'startTime': float(start),
-                        'endTime': float(end),
-                        'text': text,
-                        'keyPhrases': []
-                    })
-
-                    needs = s.get('needs_improvement') or s.get('needsImprovement') or False
-                    if needs:
-                        imp = s.get('improvement') or s.get('improvement', {})
-                        msg = ''
-                        if isinstance(imp, dict):
-                            msg = imp.get('suggestion') or imp.get('reason') or ''
-                        elif isinstance(imp, str):
-                            msg = imp
-                        if not msg:
-                            msg = text[:200]
-
-                        weak_moments.append({
-                            'timestamp': _format_hms(start),
-                            'message': msg
-                        })
-            except Exception:
-                weak_moments = []
-                timeline_transcript = []
-
-            # Add timeline and metrics to session
-            new_session['metrics'] = metrics
-            new_session['timeline'] = {
-                'audio': [],
-                'video': [],
-                'transcript': timeline_transcript,
-                'scoreDips': [],
-                'scorePeaks': []
-            }
-            new_session['weakMoments'] = weak_moments
-
-            # Note: videoUrl already set to Cloudinary URL above
-            # Do not override with local endpoint
-
-            # Optionally use Gemini to produce an AI summary from transcript
-            ai_summary = None
-            try:
-                if os.getenv('GEMINI_API_KEY'):
-                    try:
-                        from google import genai
-                        client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
-                        transcript_text = ''
-                        if isinstance(analysis_result, dict):
-                            transcript_text = analysis_result.get('transcript') or ''
-                        if not transcript_text and timeline_transcript:
-                            transcript_text = ' '.join([t['text'] for t in timeline_transcript[:50]])
-
-                        if transcript_text:
-                            prompt = f"Summarize the following session transcript in 2 concise sentences and give 3 short improvement suggestions:\n\n{transcript_text[:3000]}"
-                            response = client.models.generate_content(
-                                model='gemini-2.5-flash',
-                                contents=prompt
-                            )
-                            # Extract text from response
-                            ai_summary = response.text if hasattr(response, 'text') else None
-                    except Exception:
-                        ai_summary = None
-            except Exception:
-                ai_summary = None
-
-            if ai_summary:
-                new_session['aiSummary'] = ai_summary
-
-            # Save to DB (preferred)
-            try:
-                saved = Session.create_session(new_session)
-            except Exception:
-                saved = None
-        except Exception as e:
-            # Fallback: try to save minimal session document
-            try:
-                saved = Session.create_session(new_session)
-            except Exception:
-                saved = None
-
-        # Also keep file-based list for backward compatibility
-        try:
-            uploaded_sessions = load_uploaded_sessions()
-            sessions_list = uploaded_sessions.get('sessions', [])
-            
-            # Build session summary for file-based backup
-            session_summary = {
-                'id': session_id,
-                'sessionId': session_id,
-                'sessionName': session_name,
-                'created_at': new_session.get('created_at', datetime.utcnow()).isoformat(),
-                'weakMoments': new_session.get('weakMoments', []),
-                'uploadedFile': new_session.get('uploadedFile'),
-                'mentorId': mentor_id,
-                'userId': user_id
-            }
-            # Add metrics if available
-            if new_session.get('metrics'):
-                # Calculate overall score from metrics
-                overall_metrics = [m for m in new_session['metrics'] if m.get('name') == 'Overall']
-                if overall_metrics:
-                    session_summary['score'] = overall_metrics[0].get('score', 0)
-                else:
-                    avg_score = sum(m.get('score', 0) for m in new_session['metrics']) / len(new_session['metrics']) if new_session['metrics'] else 0
-                    session_summary['score'] = int(avg_score)
-            
-            sessions_list.insert(0, session_summary)
-            uploaded_sessions['sessions'] = sessions_list
-            save_uploaded_sessions(uploaded_sessions)
-        except Exception:
-            pass
-
-        # Ensure response session has an 'id' field for frontend compatibility
-        response_session = saved or new_session
-        try:
-            response_session['id'] = response_session.get('sessionId') or response_session.get('_id')
-        except Exception:
-            pass
-
-        response_payload = {
-            'message': 'Upload received. Analysis and diarization called (where available).',
-            'session': response_session,
-            'analysis': analysis_result,
-            'diarization': diarization_result
-        }
-
-        return jsonify(response_payload), 201
+        # Download the video from Cloudinary URL
+        response = requests.get(video_url, timeout=300, stream=True)
+        response.raise_for_status()
+        
+        # Write to file in chunks
+        with open(temp_filename, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+        
+        # Verify file was downloaded
+        if not os.path.exists(temp_filename) or os.path.getsize(temp_filename) == 0:
+            raise Exception(f"Failed to download video or file is empty")
+        
+        print(f"✓ Downloaded Cloudinary video to {temp_filename}")
+        return temp_filename
+        
     except Exception as e:
-        return jsonify({'error': f'Failed to create session: {str(e)}'}), 500
+        raise Exception(f"Failed to download Cloudinary video: {str(e)}")
 
+def get_video_duration(video_path):
+    """Extract video duration in seconds."""
+    try:
+        # Try ffprobe first
+        probe_cmd = [
+            'ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+            '-of', 'default=noprint_wrappers=1:nokey=1', video_path
+        ]
+        
+        try:
+            result = subprocess.run(probe_cmd, capture_output=True, text=True, check=True)
+            duration = float(result.stdout.strip())
+            return duration
+        except (subprocess.CalledProcessError, ValueError, FileNotFoundError):
+            # Fallback to MoviePy
+            video = VideoFileClip(video_path)
+            duration = video.duration
+            video.close()
+            return duration
+            
+    except Exception as e:
+        print(f"⚠ Could not get video duration: {e}")
+        return 0
 
 @app.route('/api/mentor/<mentor_id>/sessions/analyze', methods=['POST'])
 def analyze_video_from_url(mentor_id):
-    """Receive video URL and text, perform analysis/diarization on the video."""
+    """Receive video URL and text, download and process the video."""
     
     try:
         data = request.get_json()
@@ -1200,12 +880,24 @@ def analyze_video_from_url(mentor_id):
         # Create session object with video URL
         session_id = f'session_{uuid.uuid4().hex[:8]}'
         
+        # Download Cloudinary video to local storage
+        local_video_path = None
+        video_duration = 0
+        try:
+            local_video_path = download_cloudinary_video(video_url, session_id)
+            video_duration = get_video_duration(local_video_path)
+            print(f"✓ Video duration: {video_duration} seconds")
+        except Exception as e:
+            print(f"⚠ Video download warning: {e}")
+            # Continue anyway - external services can still process URL directly
+        
         new_session = {
             'sessionId': session_id,
             'sessionName': session_name,
-            'videoUrl': video_url,  # Store the video URL directly
+            'videoUrl': video_url,  # Store the original Cloudinary URL
+            'localVideoPath': local_video_path,  # Store path to downloaded video
             'cloudinaryPublicId': None,  # Will be set if it's a Cloudinary URL
-            'duration': 0,
+            'duration': video_duration,
             'mentorId': mentor_id,
             'userId': user_id,
             'uploadedFile': None,
@@ -1228,21 +920,61 @@ def analyze_video_from_url(mentor_id):
         try:
             if video_url:
                 analysis_url = 'https://meanwhile-mono-tested-wisdom.trycloudflare.com/api/v1/analyze-video'
-                analysis_data = {
-                    'context': context_text,
-                    'video_url': video_url  # Send Cloudinary URL or video URL
-                }
-                resp = requests.post(analysis_url, json=analysis_data, timeout=120)
-                if resp.ok:
-                    analysis_result = resp.json()
-                    analysis_filename = os.path.join(DATA_DIR, f'analysis_{session_id}.json')
-                    with open(analysis_filename, 'w') as af:
-                        json.dump(analysis_result, af)
-                else:
+                
+                # Prepare data for analysis service
+                # If we have local video, upload it; otherwise send URL
+                if local_video_path and os.path.exists(local_video_path):
+                    # Send file directly to analysis service
                     try:
+                        with open(local_video_path, 'rb') as f:
+                            files = {'video': f}
+                            data_to_send = {'context': context_text}
+                            resp = requests.post(analysis_url, files=files, data=data_to_send, timeout=300)
+                        if resp.ok:
+                            analysis_result = resp.json()
+                            analysis_filename = os.path.join(DATA_DIR, f'analysis_{session_id}.json')
+                            with open(analysis_filename, 'w') as af:
+                                json.dump(analysis_result, af)
+                        else:
+                            try:
+                                analysis_result = resp.json()
+                            except Exception:
+                                analysis_result = {'error': f'Analysis service returned status {resp.status_code}'}
+                    except Exception as e:
+                        print(f"⚠ File upload failed, trying URL: {e}")
+                        # Fallback to URL-based analysis
+                        analysis_data = {
+                            'context': context_text,
+                            'video_url': video_url
+                        }
+                        resp = requests.post(analysis_url, json=analysis_data, timeout=120)
+                        if resp.ok:
+                            analysis_result = resp.json()
+                            analysis_filename = os.path.join(DATA_DIR, f'analysis_{session_id}.json')
+                            with open(analysis_filename, 'w') as af:
+                                json.dump(analysis_result, af)
+                        else:
+                            try:
+                                analysis_result = resp.json()
+                            except Exception:
+                                analysis_result = {'error': f'Analysis service returned status {resp.status_code}'}
+                else:
+                    # Send URL to analysis service
+                    analysis_data = {
+                        'context': context_text,
+                        'video_url': video_url
+                    }
+                    resp = requests.post(analysis_url, json=analysis_data, timeout=120)
+                    if resp.ok:
                         analysis_result = resp.json()
-                    except Exception:
-                        analysis_result = {'error': f'Analysis service returned status {resp.status_code}'}
+                        analysis_filename = os.path.join(DATA_DIR, f'analysis_{session_id}.json')
+                        with open(analysis_filename, 'w') as af:
+                            json.dump(analysis_result, af)
+                    else:
+                        try:
+                            analysis_result = resp.json()
+                        except Exception:
+                            analysis_result = {'error': f'Analysis service returned status {resp.status_code}'}
         except Exception as e:
             analysis_result = {'error': f'Failed to call analysis service: {str(e)}'}
 
@@ -1252,20 +984,64 @@ def analyze_video_from_url(mentor_id):
         try:
             if video_url:
                 diarization_url = 'https://papers-mate-prefix-shortcuts.trycloudflare.com/process-video'
-                diarization_data = {'video_url': video_url}  # Send Cloudinary URL or video URL
-                resp2 = requests.post(diarization_url, json=diarization_data, timeout=120)
-                if resp2.ok:
-                    diarization_result = resp2.json()
-                    diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
-                    with open(diarization_filename, 'w') as df:
-                        json.dump(diarization_result, df)
-                else:
+                
+                # Prepare data for diarization service
+                if local_video_path and os.path.exists(local_video_path):
+                    # Send file directly to diarization service
                     try:
+                        with open(local_video_path, 'rb') as f:
+                            files = {'video': f}
+                            resp2 = requests.post(diarization_url, files=files, timeout=300)
+                        if resp2.ok:
+                            diarization_result = resp2.json()
+                            diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
+                            with open(diarization_filename, 'w') as df:
+                                json.dump(diarization_result, df)
+                        else:
+                            try:
+                                diarization_result = resp2.json()
+                            except Exception:
+                                diarization_result = {'error': f'Diarization service returned status {resp2.status_code}'}
+                    except Exception as e:
+                        print(f"⚠ File upload failed, trying URL: {e}")
+                        # Fallback to URL-based diarization
+                        diarization_data = {'video_url': video_url}
+                        resp2 = requests.post(diarization_url, json=diarization_data, timeout=120)
+                        if resp2.ok:
+                            diarization_result = resp2.json()
+                            diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
+                            with open(diarization_filename, 'w') as df:
+                                json.dump(diarization_result, df)
+                        else:
+                            try:
+                                diarization_result = resp2.json()
+                            except Exception:
+                                diarization_result = {'error': f'Diarization service returned status {resp2.status_code}'}
+                else:
+                    # Send URL to diarization service
+                    diarization_data = {'video_url': video_url}
+                    resp2 = requests.post(diarization_url, json=diarization_data, timeout=120)
+                    if resp2.ok:
                         diarization_result = resp2.json()
-                    except Exception:
-                        diarization_result = {'error': f'Diarization service returned status {resp2.status_code}'}
+                        diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
+                        with open(diarization_filename, 'w') as df:
+                            json.dump(diarization_result, df)
+                    else:
+                        try:
+                            diarization_result = resp2.json()
+                        except Exception:
+                            diarization_result = {'error': f'Diarization service returned status {resp2.status_code}'}
         except Exception as e:
             diarization_result = {'error': f'Failed to call diarization service: {str(e)}'}
+        
+        # Clean up local video file after processing (optional - keep for debugging)
+        try:
+            if local_video_path and os.path.exists(local_video_path):
+                # Uncomment to auto-delete after processing:
+                # os.remove(local_video_path)
+                print(f"✓ Local video kept for reference: {local_video_path}")
+        except Exception as e:
+            print(f"⚠ Could not clean up video: {e}")
 
         # Attach analysis and diarization results to session
         if analysis_filename:
