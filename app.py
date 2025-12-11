@@ -860,43 +860,119 @@ def get_video_duration(video_path):
 
 @app.route('/api/mentor/<mentor_id>/sessions/analyze', methods=['POST'])
 def analyze_video_from_url(mentor_id):
-    """Receive video URL and text, download and process the video."""
+    """
+    Analyze video from either file upload (form-data) or URL (JSON).
+    
+    Option 1 - File Upload (multipart/form-data):
+        POST /api/mentor/{mentor_id}/sessions/analyze
+        Content-Type: multipart/form-data
+        
+        Form fields:
+        - file: <video file> (required)
+        - context: "session context" (optional)
+        - sessionName: "Session name" (optional)
+        - userId: "user123" (optional)
+    
+    Option 2 - URL Processing (application/json):
+        POST /api/mentor/{mentor_id}/sessions/analyze
+        Content-Type: application/json
+        
+        {
+          "videoUrl": "https://res.cloudinary.com/.../video.mp4",
+          "context": "session context",
+          "sessionName": "Session name",
+          "userId": "user123"
+        }
+    """
     
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No JSON data provided'}), 400
-
-        # Extract parameters from request
-        video_url = data.get('videoUrl') or data.get('video_url')
-        context_text = data.get('context', '')
-        session_name = data.get('sessionName', f'Session {datetime.utcnow().strftime("%b %d %H:%M")}')
-        user_id = data.get('userId') or data.get('user_id') or None
-        upload_mode = data.get('uploadMode', 'file')  # 'file' or 'youtube'
-
-        if not video_url:
-            return jsonify({'error': 'No video URL provided'}), 400
-
-        # Create session object with video URL
         session_id = f'session_{uuid.uuid4().hex[:8]}'
-        
-        # Download Cloudinary video to local storage
         local_video_path = None
+        video_url = None
         video_duration = 0
-        try:
-            local_video_path = download_cloudinary_video(video_url, session_id)
-            video_duration = get_video_duration(local_video_path)
-            print(f"✓ Video duration: {video_duration} seconds")
-        except Exception as e:
-            print(f"⚠ Video download warning: {e}")
-            # Continue anyway - external services can still process URL directly
+        upload_source = None  # 'file' or 'url'
+        context_text = ''
+        session_name = f'Session {datetime.utcnow().strftime("%b %d %H:%M")}'
+        user_id = None
+
+        # ========== PRIORITY 1: Check for FILE UPLOAD (multipart/form-data) ==========
+        if 'file' in request.files:
+            file = request.files['file']
+            
+            # Validate file exists and has a filename
+            if not file or file.filename == '':
+                return jsonify({'error': 'No file selected. Please provide a video file in the "file" field'}), 400
+            
+            # Validate file type
+            if not allowed_file(file.filename):
+                return jsonify({'error': 'File type not allowed. Allowed formats: mp4, avi, mov, mkv, flv, wmv, webm, m4v'}), 400
+            
+            # Extract form data fields
+            context_text = request.form.get('context', '')
+            session_name = request.form.get('sessionName', session_name)
+            user_id = request.form.get('userId')
+            
+            # Save uploaded file
+            try:
+                filename = secure_filename(file.filename)
+                file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'mp4'
+                saved_filename = f'session_{session_id}.{file_ext}'
+                local_video_path = os.path.join(UPLOAD_FOLDER, saved_filename)
+                file.save(local_video_path)
+                
+                # Verify file was saved
+                if not os.path.exists(local_video_path):
+                    return jsonify({'error': 'File save failed - file does not exist'}), 400
+                
+                # Get video duration
+                video_duration = get_video_duration(local_video_path)
+                print(f"✓ File upload: {saved_filename} (duration: {video_duration}s)")
+                upload_source = 'file'
+                
+            except Exception as e:
+                return jsonify({'error': f'Failed to process uploaded file: {str(e)}'}), 400
+        
+        # ========== PRIORITY 2: Check for VIDEO URL (JSON or form-data) ==========
+        elif request.is_json or request.form:
+            # Get data from JSON
+            if request.is_json:
+                data = request.get_json() or {}
+                video_url = data.get('videoUrl') or data.get('video_url')
+                context_text = data.get('context', '')
+                session_name = data.get('sessionName', session_name)
+                user_id = data.get('userId') or data.get('user_id')
+            else:
+                # Get data from form (in case URL is sent as form-data)
+                video_url = request.form.get('videoUrl') or request.form.get('video_url')
+                context_text = request.form.get('context', '')
+                session_name = request.form.get('sessionName', session_name)
+                user_id = request.form.get('userId')
+            
+            if not video_url:
+                return jsonify({'error': 'No input provided. Send either: 1) file (multipart/form-data), or 2) videoUrl (JSON or form-data)'}), 400
+            
+            # Download and process Cloudinary video
+            try:
+                local_video_path = download_cloudinary_video(video_url, session_id)
+                video_duration = get_video_duration(local_video_path)
+                print(f"✓ URL download: {video_url} (duration: {video_duration}s)")
+                upload_source = 'url'
+                
+            except Exception as e:
+                print(f"⚠ Video download warning: {e}")
+                # Store original URL even if download fails (for fallback processing)
+                upload_source = 'url'
+        
+        else:
+            return jsonify({'error': 'Invalid request. Content-Type must be multipart/form-data (for file) or application/json (for URL)'}), 400
         
         new_session = {
             'sessionId': session_id,
             'sessionName': session_name,
-            'videoUrl': video_url,  # Store the original Cloudinary URL
-            'localVideoPath': local_video_path,  # Store path to downloaded video
-            'cloudinaryPublicId': None,  # Will be set if it's a Cloudinary URL
+            'videoUrl': video_url,  # Store the original URL (if present)
+            'localVideoPath': local_video_path,  # Store path to local video file
+            'uploadSource': upload_source,  # 'file' or 'url'
+            'cloudinaryPublicId': None,
             'duration': video_duration,
             'mentorId': mentor_id,
             'userId': user_id,
@@ -918,63 +994,84 @@ def analyze_video_from_url(mentor_id):
         analysis_result = None
         analysis_filename = None
         try:
-            if video_url:
+            # Call analysis service if we have either a local video path or a video URL
+            if local_video_path or video_url:
                 analysis_url = 'https://meanwhile-mono-tested-wisdom.trycloudflare.com/api/v1/analyze-video'
                 
-                # Prepare data for analysis service
-                # If we have local video, upload it; otherwise send URL
+                # Priority 1: Send local video file if available
                 if local_video_path and os.path.exists(local_video_path):
-                    # Send file directly to analysis service
                     try:
+                        # Read file content first
                         with open(local_video_path, 'rb') as f:
-                            files = {'video': f}
-                            data_to_send = {'context': context_text}
-                            resp = requests.post(analysis_url, files=files, data=data_to_send, timeout=300)
+                            file_content = f.read()
+                        
+                        # Create multipart form data with file field
+                        files = {'file': ('video.mp4', file_content, 'video/mp4')}
+                        data_to_send = {'context': context_text} if context_text else {}
+                        
+                        print(f"→ Sending local video to analysis service... (size: {len(file_content)} bytes)")
+                        resp = requests.post(analysis_url, files=files, data=data_to_send, timeout=300)
+                        
                         if resp.ok:
                             analysis_result = resp.json()
                             analysis_filename = os.path.join(DATA_DIR, f'analysis_{session_id}.json')
                             with open(analysis_filename, 'w') as af:
                                 json.dump(analysis_result, af)
+                            print(f"✓ Analysis service returned results")
                         else:
+                            print(f"⚠ Analysis service error: {resp.status_code}")
+                            print(f"⚠ Response: {resp.text[:500]}")
                             try:
                                 analysis_result = resp.json()
                             except Exception:
-                                analysis_result = {'error': f'Analysis service returned status {resp.status_code}'}
+                                analysis_result = {'error': f'Analysis service returned status {resp.status_code}: {resp.text[:200]}'}
                     except Exception as e:
-                        print(f"⚠ File upload failed, trying URL: {e}")
-                        # Fallback to URL-based analysis
+                        print(f"⚠ Local file upload failed: {e}")
+                        # Fallback to URL-based analysis if video_url exists
+                        if video_url:
+                            print(f"→ Falling back to URL-based analysis...")
+                            analysis_data = {
+                                'context': context_text,
+                                'video_url': video_url
+                            }
+                            resp = requests.post(analysis_url, json=analysis_data, timeout=120)
+                            if resp.ok:
+                                analysis_result = resp.json()
+                                analysis_filename = os.path.join(DATA_DIR, f'analysis_{session_id}.json')
+                                with open(analysis_filename, 'w') as af:
+                                    json.dump(analysis_result, af)
+                                print(f"✓ Analysis service (URL fallback) returned results")
+                            else:
+                                try:
+                                    analysis_result = resp.json()
+                                except Exception:
+                                    analysis_result = {'error': f'Analysis service returned status {resp.status_code}'}
+                        else:
+                            analysis_result = {'error': f'File upload failed and no URL available: {str(e)}'}
+                
+                # Priority 2: Send URL if no local video
+                elif video_url:
+                    try:
                         analysis_data = {
                             'context': context_text,
                             'video_url': video_url
                         }
+                        print(f"→ Sending video URL to analysis service...")
                         resp = requests.post(analysis_url, json=analysis_data, timeout=120)
                         if resp.ok:
                             analysis_result = resp.json()
                             analysis_filename = os.path.join(DATA_DIR, f'analysis_{session_id}.json')
                             with open(analysis_filename, 'w') as af:
                                 json.dump(analysis_result, af)
+                            print(f"✓ Analysis service returned results")
                         else:
                             try:
                                 analysis_result = resp.json()
                             except Exception:
                                 analysis_result = {'error': f'Analysis service returned status {resp.status_code}'}
-                else:
-                    # Send URL to analysis service
-                    analysis_data = {
-                        'context': context_text,
-                        'video_url': video_url
-                    }
-                    resp = requests.post(analysis_url, json=analysis_data, timeout=120)
-                    if resp.ok:
-                        analysis_result = resp.json()
-                        analysis_filename = os.path.join(DATA_DIR, f'analysis_{session_id}.json')
-                        with open(analysis_filename, 'w') as af:
-                            json.dump(analysis_result, af)
-                    else:
-                        try:
-                            analysis_result = resp.json()
-                        except Exception:
-                            analysis_result = {'error': f'Analysis service returned status {resp.status_code}'}
+                            print(f"⚠ Analysis service error: {resp.status_code}")
+                    except Exception as e:
+                        analysis_result = {'error': f'Failed to call analysis service: {str(e)}'}
         except Exception as e:
             analysis_result = {'error': f'Failed to call analysis service: {str(e)}'}
 
@@ -982,55 +1079,77 @@ def analyze_video_from_url(mentor_id):
         diarization_result = None
         diarization_filename = None
         try:
-            if video_url:
+            # Call diarization service if we have either a local video path or a video URL
+            if local_video_path or video_url:
                 diarization_url = 'https://papers-mate-prefix-shortcuts.trycloudflare.com/process-video'
                 
-                # Prepare data for diarization service
+                # Priority 1: Send local video file if available
                 if local_video_path and os.path.exists(local_video_path):
-                    # Send file directly to diarization service
                     try:
+                        # Read file content first
                         with open(local_video_path, 'rb') as f:
-                            files = {'video': f}
-                            resp2 = requests.post(diarization_url, files=files, timeout=300)
+                            file_content = f.read()
+                        
+                        # Create multipart form data with file field
+                        files = {'file': ('video.mp4', file_content, 'video/mp4')}
+                        
+                        print(f"→ Sending local video to diarization service... (size: {len(file_content)} bytes)")
+                        resp2 = requests.post(diarization_url, files=files, timeout=300)
+                        
                         if resp2.ok:
                             diarization_result = resp2.json()
                             diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
                             with open(diarization_filename, 'w') as df:
                                 json.dump(diarization_result, df)
+                            print(f"✓ Diarization service returned results")
                         else:
+                            print(f"⚠ Diarization service error: {resp2.status_code}")
+                            print(f"⚠ Response: {resp2.text[:500]}")
                             try:
                                 diarization_result = resp2.json()
                             except Exception:
-                                diarization_result = {'error': f'Diarization service returned status {resp2.status_code}'}
+                                diarization_result = {'error': f'Diarization service returned status {resp2.status_code}: {resp2.text[:200]}'}
                     except Exception as e:
-                        print(f"⚠ File upload failed, trying URL: {e}")
-                        # Fallback to URL-based diarization
+                        print(f"⚠ Local file upload failed: {e}")
+                        # Fallback to URL-based diarization if video_url exists
+                        if video_url:
+                            print(f"→ Falling back to URL-based diarization...")
+                            diarization_data = {'video_url': video_url}
+                            resp2 = requests.post(diarization_url, json=diarization_data, timeout=120)
+                            if resp2.ok:
+                                diarization_result = resp2.json()
+                                diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
+                                with open(diarization_filename, 'w') as df:
+                                    json.dump(diarization_result, df)
+                                print(f"✓ Diarization service (URL fallback) returned results")
+                            else:
+                                try:
+                                    diarization_result = resp2.json()
+                                except Exception:
+                                    diarization_result = {'error': f'Diarization service returned status {resp2.status_code}'}
+                        else:
+                            diarization_result = {'error': f'File upload failed and no URL available: {str(e)}'}
+                
+                # Priority 2: Send URL if no local video
+                elif video_url:
+                    try:
                         diarization_data = {'video_url': video_url}
+                        print(f"→ Sending video URL to diarization service...")
                         resp2 = requests.post(diarization_url, json=diarization_data, timeout=120)
                         if resp2.ok:
                             diarization_result = resp2.json()
                             diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
                             with open(diarization_filename, 'w') as df:
                                 json.dump(diarization_result, df)
+                            print(f"✓ Diarization service returned results")
                         else:
                             try:
                                 diarization_result = resp2.json()
                             except Exception:
                                 diarization_result = {'error': f'Diarization service returned status {resp2.status_code}'}
-                else:
-                    # Send URL to diarization service
-                    diarization_data = {'video_url': video_url}
-                    resp2 = requests.post(diarization_url, json=diarization_data, timeout=120)
-                    if resp2.ok:
-                        diarization_result = resp2.json()
-                        diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
-                        with open(diarization_filename, 'w') as df:
-                            json.dump(diarization_result, df)
-                    else:
-                        try:
-                            diarization_result = resp2.json()
-                        except Exception:
-                            diarization_result = {'error': f'Diarization service returned status {resp2.status_code}'}
+                            print(f"⚠ Diarization service error: {resp2.status_code}")
+                    except Exception as e:
+                        diarization_result = {'error': f'Failed to call diarization service: {str(e)}'}
         except Exception as e:
             diarization_result = {'error': f'Failed to call diarization service: {str(e)}'}
         

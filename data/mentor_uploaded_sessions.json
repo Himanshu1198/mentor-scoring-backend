@@ -1,6 +1,46 @@
 {
   "sessions": [
     {
+      "id": "session_1d9e19b8",
+      "sessionId": "session_1d9e19b8",
+      "sessionName": "Session Dec 11 22:13",
+      "created_at": "2025-12-11T22:13:32.458601",
+      "weakMoments": [],
+      "uploadedFile": null,
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af"
+    },
+    {
+      "id": "session_de539c8c",
+      "sessionId": "session_de539c8c",
+      "sessionName": "Session Dec 11 22:11",
+      "created_at": "2025-12-11T22:11:13.027473",
+      "weakMoments": [],
+      "uploadedFile": null,
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af"
+    },
+    {
+      "id": "session_5bc486db",
+      "sessionId": "session_5bc486db",
+      "sessionName": "Session Dec 11 22:10",
+      "created_at": "2025-12-11T22:10:31.528201",
+      "weakMoments": [],
+      "uploadedFile": null,
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af"
+    },
+    {
+      "id": "session_13f24e1a",
+      "sessionId": "session_13f24e1a",
+      "sessionName": "Session Dec 11 22:04",
+      "created_at": "2025-12-11T22:04:59.930763",
+      "weakMoments": [],
+      "uploadedFile": null,
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af"
+    },
+    {
       "id": "session_ec4c93ca",
       "sessionId": "session_ec4c93ca",
       "sessionName": "Session Dec 11 22:01",
