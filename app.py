@@ -1108,6 +1108,303 @@ def upload_mentor_session(mentor_id):
     except Exception as e:
         return jsonify({'error': f'Failed to create session: {str(e)}'}), 500
 
+
+@app.route('/api/mentor/<mentor_id>/sessions/analyze', methods=['POST'])
+def analyze_video_from_url(mentor_id):
+    """Receive video URL and text, perform analysis/diarization on the video."""
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+
+        # Extract parameters from request
+        video_url = data.get('videoUrl') or data.get('video_url')
+        context_text = data.get('context', '')
+        session_name = data.get('sessionName', f'Session {datetime.utcnow().strftime("%b %d %H:%M")}')
+        user_id = data.get('userId') or data.get('user_id') or None
+        upload_mode = data.get('uploadMode', 'file')  # 'file' or 'youtube'
+
+        if not video_url:
+            return jsonify({'error': 'No video URL provided'}), 400
+
+        # Create session object with video URL
+        session_id = f'session_{uuid.uuid4().hex[:8]}'
+        
+        new_session = {
+            'sessionId': session_id,
+            'sessionName': session_name,
+            'videoUrl': video_url,  # Store the video URL directly
+            'cloudinaryPublicId': None,  # Will be set if it's a Cloudinary URL
+            'duration': 0,
+            'mentorId': mentor_id,
+            'userId': user_id,
+            'uploadedFile': None,
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow(),
+            'timeline': {
+                'audio': [],
+                'video': [],
+                'transcript': [],
+                'scoreDips': [],
+                'scorePeaks': []
+            },
+            'metrics': [],
+            'weakMoments': []
+        }
+
+        # Call external analysis service (service 1) if available
+        analysis_result = None
+        analysis_filename = None
+        try:
+            if video_url:
+                analysis_url = 'https://meanwhile-mono-tested-wisdom.trycloudflare.com/api/v1/analyze-video'
+                analysis_data = {
+                    'context': context_text,
+                    'video_url': video_url  # Send Cloudinary URL or video URL
+                }
+                resp = requests.post(analysis_url, json=analysis_data, timeout=120)
+                if resp.ok:
+                    analysis_result = resp.json()
+                    analysis_filename = os.path.join(DATA_DIR, f'analysis_{session_id}.json')
+                    with open(analysis_filename, 'w') as af:
+                        json.dump(analysis_result, af)
+                else:
+                    try:
+                        analysis_result = resp.json()
+                    except Exception:
+                        analysis_result = {'error': f'Analysis service returned status {resp.status_code}'}
+        except Exception as e:
+            analysis_result = {'error': f'Failed to call analysis service: {str(e)}'}
+
+        # Call diarization service (service 2)
+        diarization_result = None
+        diarization_filename = None
+        try:
+            if video_url:
+                diarization_url = 'https://papers-mate-prefix-shortcuts.trycloudflare.com/process-video'
+                diarization_data = {'video_url': video_url}  # Send Cloudinary URL or video URL
+                resp2 = requests.post(diarization_url, json=diarization_data, timeout=120)
+                if resp2.ok:
+                    diarization_result = resp2.json()
+                    diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
+                    with open(diarization_filename, 'w') as df:
+                        json.dump(diarization_result, df)
+                else:
+                    try:
+                        diarization_result = resp2.json()
+                    except Exception:
+                        diarization_result = {'error': f'Diarization service returned status {resp2.status_code}'}
+        except Exception as e:
+            diarization_result = {'error': f'Failed to call diarization service: {str(e)}'}
+
+        # Attach analysis and diarization results to session
+        if analysis_filename:
+            new_session['analysisFile'] = os.path.basename(analysis_filename)
+            new_session['analysis'] = analysis_result
+        else:
+            new_session['analysis'] = analysis_result
+
+        if diarization_filename:
+            new_session['diarizationFile'] = os.path.basename(diarization_filename)
+            new_session['diarization'] = diarization_result
+        else:
+            new_session['diarization'] = diarization_result
+
+        # Enrich session document using analysis & diarization results
+        try:
+            # Build metrics list from analysis_result with proper schema compliance
+            metrics = []
+            if isinstance(analysis_result, dict):
+                key_map = {
+                    'clarity': 'Clarity',
+                    'communication': 'Communication',
+                    'engagement': 'Engagement',
+                    'technical_depth': 'Technical Depth',
+                    'interaction': 'Interaction',
+                    'pacing': 'Pacing',
+                    'eye_contact': 'Eye Contact',
+                    'gestures': 'Gestures'
+                }
+                for k, label in key_map.items():
+                    val = analysis_result.get(k)
+                    score = None
+                    if isinstance(val, dict):
+                        score = val.get('score')
+                    elif isinstance(val, (int, float)):
+                        score = val
+                    if score is not None:
+                        try:
+                            score = int(float(score))
+                            score = max(0, min(100, score))
+                            metrics.append({
+                                'name': label,
+                                'score': score,
+                                'confidenceInterval': [max(0, score - 5), min(100, score + 5)],
+                                'whatHelped': [],
+                                'whatHurt': []
+                            })
+                        except Exception:
+                            pass
+
+                # Overall score
+                overall = analysis_result.get('overall_score') or analysis_result.get('overallScore')
+                if overall is not None:
+                    try:
+                        overall_score = int(float(overall))
+                        overall_score = max(0, min(100, overall_score))
+                        metrics.append({
+                            'name': 'Overall',
+                            'score': overall_score,
+                            'confidenceInterval': [max(0, overall_score - 5), min(100, overall_score + 5)],
+                            'whatHelped': [],
+                            'whatHurt': []
+                        })
+                    except Exception:
+                        pass
+
+            # Build weakMoments from diarization (sentences flagged for improvement)
+            weak_moments = []
+            timeline_transcript = []
+            try:
+                sentences = []
+                if isinstance(diarization_result, dict):
+                    sentences = diarization_result.get('sentences') or []
+
+                def _format_hms(sec):
+                    sec = int(sec or 0)
+                    h = sec // 3600
+                    m = (sec % 3600) // 60
+                    s = sec % 60
+                    return f"{h:02d}:{m:02d}:{s:02d}"
+
+                for s in sentences:
+                    start = s.get('start', 0)
+                    end = s.get('end', 0)
+                    text = s.get('text') or s.get('transcript') or ''
+                    timeline_transcript.append({
+                        'startTime': float(start),
+                        'endTime': float(end),
+                        'text': text,
+                        'keyPhrases': []
+                    })
+
+                    needs = s.get('needs_improvement') or s.get('needsImprovement') or False
+                    if needs:
+                        imp = s.get('improvement') or s.get('improvement', {})
+                        msg = ''
+                        if isinstance(imp, dict):
+                            msg = imp.get('suggestion') or imp.get('reason') or ''
+                        elif isinstance(imp, str):
+                            msg = imp
+                        if not msg:
+                            msg = text[:200]
+
+                        weak_moments.append({
+                            'timestamp': _format_hms(start),
+                            'message': msg
+                        })
+            except Exception:
+                weak_moments = []
+                timeline_transcript = []
+
+            # Add timeline and metrics to session
+            new_session['metrics'] = metrics
+            new_session['timeline'] = {
+                'audio': [],
+                'video': [],
+                'transcript': timeline_transcript,
+                'scoreDips': [],
+                'scorePeaks': []
+            }
+            new_session['weakMoments'] = weak_moments
+
+            # Use Gemini to produce an AI summary from transcript
+            ai_summary = None
+            try:
+                if os.getenv('GEMINI_API_KEY'):
+                    try:
+                        from google import genai
+                        client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
+                        transcript_text = ''
+                        if isinstance(analysis_result, dict):
+                            transcript_text = analysis_result.get('transcript') or ''
+                        if not transcript_text and timeline_transcript:
+                            transcript_text = ' '.join([t['text'] for t in timeline_transcript[:50]])
+
+                        if transcript_text:
+                            prompt = f"Summarize the following session transcript in 2 concise sentences and give 3 short improvement suggestions:\n\n{transcript_text[:3000]}"
+                            response = client.models.generate_content(
+                                model='gemini-2.5-flash',
+                                contents=prompt
+                            )
+                            ai_summary = response.text if hasattr(response, 'text') else None
+                    except Exception:
+                        ai_summary = None
+            except Exception:
+                ai_summary = None
+
+            if ai_summary:
+                new_session['aiSummary'] = ai_summary
+
+            # Save to DB
+            try:
+                saved = Session.create_session(new_session)
+            except Exception:
+                saved = None
+        except Exception as e:
+            try:
+                saved = Session.create_session(new_session)
+            except Exception:
+                saved = None
+
+        # Also keep file-based list for backward compatibility
+        try:
+            uploaded_sessions = load_uploaded_sessions()
+            sessions_list = uploaded_sessions.get('sessions', [])
+            
+            session_summary = {
+                'id': session_id,
+                'sessionId': session_id,
+                'sessionName': session_name,
+                'created_at': new_session.get('created_at', datetime.utcnow()).isoformat(),
+                'weakMoments': new_session.get('weakMoments', []),
+                'uploadedFile': new_session.get('uploadedFile'),
+                'mentorId': mentor_id,
+                'userId': user_id
+            }
+            if new_session.get('metrics'):
+                overall_metrics = [m for m in new_session['metrics'] if m.get('name') == 'Overall']
+                if overall_metrics:
+                    session_summary['score'] = overall_metrics[0].get('score', 0)
+                else:
+                    avg_score = sum(m.get('score', 0) for m in new_session['metrics']) / len(new_session['metrics']) if new_session['metrics'] else 0
+                    session_summary['score'] = int(avg_score)
+            
+            sessions_list.insert(0, session_summary)
+            uploaded_sessions['sessions'] = sessions_list
+            save_uploaded_sessions(uploaded_sessions)
+        except Exception:
+            pass
+
+        # Ensure response session has an 'id' field for frontend compatibility
+        response_session = saved or new_session
+        try:
+            response_session['id'] = response_session.get('sessionId') or response_session.get('_id')
+        except Exception:
+            pass
+
+        response_payload = {
+            'message': 'Video analysis started from URL.',
+            'session': response_session,
+            'analysis': analysis_result,
+            'diarization': diarization_result
+        }
+
+        return jsonify(response_payload), 201
+    except Exception as e:
+        return jsonify({'error': f'Failed to analyze video: {str(e)}'}), 500
+
 @app.route('/api/public/mentors/rankings', methods=['GET'])
 def get_public_rankings():
     """Public leaderboard with compact filters; returns normalized scores only."""
