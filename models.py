@@ -2,6 +2,7 @@
 Database models for the mentor scoring system
 """
 from pymongo import MongoClient
+from gridfs import GridFS
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import os
@@ -16,6 +17,9 @@ MONGODB_DB_NAME = os.getenv('MONGODB_DB_NAME', 'mentor_scoring')
 # Initialize MongoDB connection
 client = MongoClient(MONGODB_URI)
 db = client[MONGODB_DB_NAME]
+
+# Initialize GridFS for video storage
+fs = GridFS(db)
 
 # Get collections
 users_collection = db['users']
