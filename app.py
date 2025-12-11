@@ -22,7 +22,7 @@ from cloudinary_handler import init_cloudinary, upload_video_to_cloudinary, get_
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/api/*": {"origins": "*", "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE"], "allow_headers": ["Content-Type", "Authorization"]}})
 
 # Initialize Cloudinary for video storage
 try:
