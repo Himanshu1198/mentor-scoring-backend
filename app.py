@@ -796,8 +796,8 @@ def upload_mentor_session(mentor_id):
             saved_filename = f"{unique_id}.{file_ext}"
             
             # Upload directly to MongoDB GridFS instead of local filesystem
-            file_bytes = io.BytesIO()
-            file.save(file_bytes)
+            # Read file stream directly (don't use file.save with BytesIO)
+            file_bytes = io.BytesIO(file.read())
             file_bytes.seek(0)
             
             file_id = fs.put(
