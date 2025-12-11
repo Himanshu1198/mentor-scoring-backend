@@ -750,10 +750,12 @@ def upload_mentor_session(mentor_id):
     user_id = request.form.get('userId') or request.form.get('user_id') or None
 
     file_path = None
+    upload_result = None
+    video_url = None
+    cloudinary_public_id = None
 
     try:
         # If a YouTube URL is provided, download it
-        video_url = None
         if yt_url:
             try:
                 file_path = download_youtube_video(yt_url)
@@ -1012,9 +1014,8 @@ def upload_mentor_session(mentor_id):
             }
             new_session['weakMoments'] = weak_moments
 
-            # Provide a URL to stream the video for the breakdown page
-            # We expose a simple endpoint below that serves the uploaded file
-            new_session['videoUrl'] = f"/api/mentor/{mentor_id}/sessions/{session_id}/video"
+            # Note: videoUrl already set to Cloudinary URL above
+            # Do not override with local endpoint
 
             # Optionally use Gemini to produce an AI summary from transcript
             ai_summary = None
