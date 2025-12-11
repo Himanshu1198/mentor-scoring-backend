@@ -334,6 +334,75 @@ def process_youtube_url():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+@app.route('/api/cloudinary/signature', methods=['POST'])
+def get_cloudinary_signature():
+    """Generate a signed upload signature for Cloudinary uploads."""
+    try:
+        import hashlib
+        data = request.get_json()
+        mentor_id = data.get('mentorId')
+        session_id = data.get('sessionId')
+        
+        if not mentor_id or not session_id:
+            return jsonify({'error': 'Missing mentorId or sessionId'}), 400
+        
+        # Get Cloudinary credentials from environment
+        api_key = os.getenv('CLOUDINARY_API_KEY')
+        api_secret = os.getenv('CLOUDINARY_API_SECRET')
+        
+        if not api_key or not api_secret:
+            return jsonify({'error': 'Cloudinary credentials not configured'}), 500
+        
+        # Generate timestamp
+        import time
+        timestamp = int(time.time())
+        
+        # Build the signature string
+        public_id = f"mentor_videos/{mentor_id}/{session_id}"
+        params = {
+            'public_id': public_id,
+            'folder': 'mentor_videos',
+            'overwrite': True,
+            'invalidate': True,
+            'tags': f'mentor,session,{mentor_id}',
+            'timestamp': timestamp
+        }
+        
+        # Sort params alphabetically
+        param_string = '&'.join([f"{k}={v}" for k, v in sorted(params.items())])
+        signature_string = f"{param_string}{api_secret}"
+        
+        # Generate SHA-1 signature
+        signature = hashlib.sha1(signature_string.encode()).hexdigest()
+        
+        return jsonify({
+            'signature': signature,
+            'timestamp': timestamp,
+            'api_key': api_key,
+            'public_id': public_id
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to generate signature: {str(e)}'}), 500
+
+
+@app.route('/api/cloudinary/delete', methods=['POST'])
+def delete_cloudinary_video():
+    """Delete a video from Cloudinary."""
+    try:
+        data = request.get_json()
+        public_id = data.get('publicId')
+        
+        if not public_id:
+            return jsonify({'error': 'Missing publicId'}), 400
+        
+        delete_video_from_cloudinary(public_id)
+        return jsonify({'message': 'Video deleted successfully'}), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to delete video: {str(e)}'}), 500
+
 @app.route('/api/auth/login', methods=['POST'])
 def login():
     """Handle user login using MongoDB"""
