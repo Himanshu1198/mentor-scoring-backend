@@ -4,25 +4,33 @@ import yt_dlp
 import io
 import tempfile
 from datetime import datetime
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, redirect
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from werkzeug.security import check_password_hash, generate_password_hash
 from moviepy.editor import VideoFileClip
-from bson.objectid import ObjectId
 import uuid
 from pathlib import Path
 import subprocess
 import sys
 import requests
 from dotenv import load_dotenv
-from models import User, Session, init_db, seed_default_users, fs, db
+from models import User, Session, init_db, seed_default_users, db
+from cloudinary_handler import init_cloudinary, upload_video_to_cloudinary, get_video_url, delete_video_from_cloudinary
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
+
+# Initialize Cloudinary for video storage
+try:
+    init_cloudinary()
+    print("✓ Cloudinary initialized successfully")
+except Exception as e:
+    print(f"⚠ Cloudinary initialization warning: {e}")
+    print("  Make sure CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET are set")
 
 # Initialize database on startup
 try:
@@ -745,7 +753,7 @@ def upload_mentor_session(mentor_id):
 
     try:
         # If a YouTube URL is provided, download it
-        file_id = None
+        video_url = None
         if yt_url:
             try:
                 file_path = download_youtube_video(yt_url)
@@ -754,24 +762,19 @@ def upload_mentor_session(mentor_id):
 
             saved_filename = os.path.basename(file_path)
             
-            # Upload YouTube video to GridFS
+            # Upload YouTube video to Cloudinary
             try:
                 with open(file_path, 'rb') as f:
-                    file_bytes = io.BytesIO(f.read())
-                    file_bytes.seek(0)
-                    
-                    file_id = fs.put(
-                        file_bytes,
-                        filename=saved_filename,
-                        metadata={
-                            'mentorId': mentor_id,
-                            'sessionId': None,  # Will be set after session creation
-                            'source': 'youtube',
-                            'youtubeUrl': yt_url
-                        }
+                    upload_result = upload_video_to_cloudinary(
+                        f,
+                        mentor_id,
+                        f'session_{uuid.uuid4().hex[:8]}',
+                        saved_filename
                     )
+                    video_url = upload_result['url']
+                    cloudinary_public_id = upload_result['public_id']
                 
-                # Clean up local file after uploading to GridFS
+                # Clean up local file after uploading to Cloudinary
                 try:
                     os.remove(file_path)
                 except:
@@ -795,35 +798,36 @@ def upload_mentor_session(mentor_id):
             file_ext = filename.rsplit('.', 1)[1].lower()
             saved_filename = f"{unique_id}.{file_ext}"
             
-            # Upload directly to MongoDB GridFS instead of local filesystem
-            # Read file stream directly (don't use file.save with BytesIO)
-            file_bytes = io.BytesIO(file.read())
-            file_bytes.seek(0)
-            
-            file_id = fs.put(
-                file_bytes,
-                filename=saved_filename,
-                metadata={
-                    'mentorId': mentor_id,
-                    'sessionId': None,  # Will be set after session creation
-                    'originalName': file.filename
-                }
-            )
-            
-            # Store file path for later use with external services
-            file_path = None
+            # Upload directly to Cloudinary
+            session_id = f'session_{uuid.uuid4().hex[:8]}'
+            try:
+                upload_result = upload_video_to_cloudinary(
+                    file.read(),
+                    mentor_id,
+                    session_id,
+                    saved_filename
+                )
+                video_url = upload_result['url']
+                cloudinary_public_id = upload_result['public_id']
+            except Exception as e:
+                return jsonify({'error': f'Failed to upload video: {str(e)}'}), 500
 
         # Build session object base with complete schema structure
         session_id = f'session_{uuid.uuid4().hex[:8]}'
+        # Extract duration from Cloudinary upload result
+        video_duration = 0
+        if isinstance(upload_result, dict) and 'duration' in upload_result:
+            video_duration = int(upload_result['duration'])
+        
         new_session = {
             'sessionId': session_id,
             'sessionName': session_name,
-            'videoUrl': f"/api/mentor/{mentor_id}/sessions/{session_id}/video",
-            'duration': 0,  # Will be calculated from transcript or file
+            'videoUrl': video_url,  # Store Cloudinary URL directly
+            'cloudinaryPublicId': cloudinary_public_id,  # Store public ID for management
+            'duration': video_duration,  # Get from Cloudinary metadata
             'mentorId': mentor_id,
             'userId': user_id,
             'uploadedFile': saved_filename,
-            'videoFileId': str(file_id) if file_id else None,  # Store GridFS file ID
             'created_at': datetime.utcnow(),
             'updated_at': datetime.utcnow(),
             # Initialize with empty arrays - will be filled by Gemini during create_session
@@ -842,18 +846,14 @@ def upload_mentor_session(mentor_id):
         analysis_result = None
         analysis_filename = None
         try:
-            # Get video from GridFS for external services
-            if file_id:
-                grid_out = fs.get(file_id)
-                grid_out.seek(0)
-            else:
-                grid_out = None
-            
-            if grid_out:
+            # Send video URL to external services
+            if video_url:
                 analysis_url = 'https://meanwhile-mono-tested-wisdom.trycloudflare.com/api/v1/analyze-video'
-                files = {'file': (saved_filename, grid_out, 'video/mp4')}
-                data = {'context': context_text}
-                resp = requests.post(analysis_url, files=files, data=data, timeout=120)
+                data = {
+                    'context': context_text,
+                    'video_url': video_url  # Send Cloudinary URL instead of file
+                }
+                resp = requests.post(analysis_url, json=data, timeout=120)
                 if resp.ok:
                     analysis_result = resp.json()
                     analysis_filename = os.path.join(DATA_DIR, f'analysis_{session_id}.json')
@@ -872,17 +872,11 @@ def upload_mentor_session(mentor_id):
         diarization_result = None
         diarization_filename = None
         try:
-            # Get video from GridFS for external services
-            if file_id:
-                grid_out = fs.get(file_id)
-                grid_out.seek(0)
-            else:
-                grid_out = None
-            
-            if grid_out:
+            # Send video URL to external services
+            if video_url:
                 diarization_url = 'https://papers-mate-prefix-shortcuts.trycloudflare.com/process-video'
-                files = {'file': (saved_filename, grid_out, 'video/mp4')}
-                resp2 = requests.post(diarization_url, files=files, timeout=120)
+                data = {'video_url': video_url}  # Send Cloudinary URL
+                resp2 = requests.post(diarization_url, json=data, timeout=120)
                 if resp2.ok:
                     diarization_result = resp2.json()
                     diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
@@ -895,26 +889,6 @@ def upload_mentor_session(mentor_id):
                         diarization_result = {'error': f'Diarization service returned status {resp2.status_code}'}
         except Exception as e:
             diarization_result = {'error': f'Failed to call diarization service: {str(e)}'}
-
-        # Calculate video duration from GridFS file
-        try:
-            if file_id:
-                grid_out = fs.get(file_id)
-                # Create temporary file for moviepy to read
-                import tempfile
-                with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as tmp:
-                    tmp.write(grid_out.read())
-                    tmp_path = tmp.name
-                
-                try:
-                    video = VideoFileClip(tmp_path)
-                    new_session['duration'] = int(video.duration)
-                    video.close()
-                finally:
-                    if os.path.exists(tmp_path):
-                        os.remove(tmp_path)
-        except Exception:
-            new_session['duration'] = 0  # Will be filled by Gemini if needed
 
         # Attach analysis references into session document
         if analysis_filename:
@@ -1179,37 +1153,20 @@ def get_public_rankings():
 
 @app.route('/api/mentor/<mentor_id>/sessions/<session_id>/video', methods=['GET'])
 def serve_session_video(mentor_id, session_id):
-    """Serve the uploaded video file for a session from MongoDB GridFS."""
+    """Redirect to the Cloudinary-hosted video for a session."""
     try:
         session = Session.find_by_sessionId(session_id)
         if not session:
             return jsonify({'error': 'Session not found'}), 404
 
-        # Try to get video from GridFS first (new method)
-        video_file_id = session.get('videoFileId')
-        if video_file_id:
-            try:
-                grid_out = fs.get(ObjectId(video_file_id))
-                return send_file(
-                    grid_out,
-                    mimetype='video/mp4',
-                    as_attachment=False,
-                    download_name=f"{session_id}.mp4"
-                )
-            except Exception as e:
-                # Fall back to local file if GridFS fails
-                print(f"GridFS retrieval failed: {str(e)}")
-        
-        # Fallback: try to serve from local filesystem (for compatibility)
-        filename = session.get('uploadedFile') or session.get('uploaded_file') or session.get('uploadedFileName')
-        if not filename:
+        # Get video URL from Cloudinary
+        video_url = session.get('videoUrl')
+        if not video_url:
             return jsonify({'error': 'No video attached to this session'}), 404
 
-        file_path = os.path.join(UPLOAD_FOLDER, filename)
-        if not os.path.exists(file_path):
-            return jsonify({'error': 'Video file not found on server'}), 404
-
-        return send_file(file_path, mimetype='video/mp4')
+        # Redirect to Cloudinary URL (or return as JSON for frontend to embed)
+        # Using redirect for direct browser access
+        return redirect(video_url)
     except Exception as e:
         return jsonify({'error': f'Failed to serve video: {str(e)}'}), 500
 
