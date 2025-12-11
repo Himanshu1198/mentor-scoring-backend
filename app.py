@@ -1009,43 +1009,56 @@ def analyze_video_from_url(mentor_id):
                         files = {'file': ('video.mp4', file_content, 'video/mp4')}
                         data_to_send = {'context': context_text} if context_text else {}
                         
-                        print(f"→ Sending local video to analysis service... (size: {len(file_content)} bytes)")
+                        print(f"→ Sending local video to analysis service (POST)... (size: {len(file_content)} bytes)")
+                        print(f"→ Analysis URL: {analysis_url}")
+                        print(f"→ Form fields: file={len(file_content)} bytes, context={len(context_text)} chars")
+                        
                         resp = requests.post(analysis_url, files=files, data=data_to_send, timeout=300)
+                        
+                        print(f"← Analysis service response: {resp.status_code}")
                         
                         if resp.ok:
                             analysis_result = resp.json()
                             analysis_filename = os.path.join(DATA_DIR, f'analysis_{session_id}.json')
                             with open(analysis_filename, 'w') as af:
                                 json.dump(analysis_result, af)
-                            print(f"✓ Analysis service returned results")
+                            print(f"✓ Analysis service returned results (saved to {analysis_filename})")
                         else:
                             print(f"⚠ Analysis service error: {resp.status_code}")
-                            print(f"⚠ Response: {resp.text[:500]}")
+                            print(f"⚠ Response preview: {resp.text[:500]}")
                             try:
                                 analysis_result = resp.json()
                             except Exception:
                                 analysis_result = {'error': f'Analysis service returned status {resp.status_code}: {resp.text[:200]}'}
                     except Exception as e:
-                        print(f"⚠ Local file upload failed: {e}")
+                        print(f"⚠ Local file upload failed: {str(e)}")
+                        import traceback
+                        traceback.print_exc()
+                        
                         # Fallback to URL-based analysis if video_url exists
                         if video_url:
-                            print(f"→ Falling back to URL-based analysis...")
+                            print(f"→ Falling back to URL-based analysis (POST)...")
                             analysis_data = {
                                 'context': context_text,
                                 'video_url': video_url
                             }
-                            resp = requests.post(analysis_url, json=analysis_data, timeout=120)
-                            if resp.ok:
-                                analysis_result = resp.json()
-                                analysis_filename = os.path.join(DATA_DIR, f'analysis_{session_id}.json')
-                                with open(analysis_filename, 'w') as af:
-                                    json.dump(analysis_result, af)
-                                print(f"✓ Analysis service (URL fallback) returned results")
-                            else:
-                                try:
+                            try:
+                                resp = requests.post(analysis_url, json=analysis_data, timeout=120)
+                                print(f"← Analysis service (URL fallback) response: {resp.status_code}")
+                                
+                                if resp.ok:
                                     analysis_result = resp.json()
-                                except Exception:
-                                    analysis_result = {'error': f'Analysis service returned status {resp.status_code}'}
+                                    analysis_filename = os.path.join(DATA_DIR, f'analysis_{session_id}.json')
+                                    with open(analysis_filename, 'w') as af:
+                                        json.dump(analysis_result, af)
+                                    print(f"✓ Analysis service (URL fallback) returned results")
+                                else:
+                                    try:
+                                        analysis_result = resp.json()
+                                    except Exception:
+                                        analysis_result = {'error': f'Analysis service returned status {resp.status_code}'}
+                            except Exception as url_error:
+                                analysis_result = {'error': f'URL fallback failed: {str(url_error)}'}
                         else:
                             analysis_result = {'error': f'File upload failed and no URL available: {str(e)}'}
                 
@@ -1093,40 +1106,52 @@ def analyze_video_from_url(mentor_id):
                         # Create multipart form data with file field
                         files = {'file': ('video.mp4', file_content, 'video/mp4')}
                         
-                        print(f"→ Sending local video to diarization service... (size: {len(file_content)} bytes)")
+                        print(f"→ Sending local video to diarization service (POST)... (size: {len(file_content)} bytes)")
+                        print(f"→ Diarization URL: {diarization_url}")
+                        
                         resp2 = requests.post(diarization_url, files=files, timeout=300)
+                        
+                        print(f"← Diarization service response: {resp2.status_code}")
                         
                         if resp2.ok:
                             diarization_result = resp2.json()
                             diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
                             with open(diarization_filename, 'w') as df:
                                 json.dump(diarization_result, df)
-                            print(f"✓ Diarization service returned results")
+                            print(f"✓ Diarization service returned results (saved to {diarization_filename})")
                         else:
                             print(f"⚠ Diarization service error: {resp2.status_code}")
-                            print(f"⚠ Response: {resp2.text[:500]}")
+                            print(f"⚠ Response preview: {resp2.text[:500]}")
                             try:
                                 diarization_result = resp2.json()
                             except Exception:
                                 diarization_result = {'error': f'Diarization service returned status {resp2.status_code}: {resp2.text[:200]}'}
                     except Exception as e:
-                        print(f"⚠ Local file upload failed: {e}")
+                        print(f"⚠ Local file upload failed: {str(e)}")
+                        import traceback
+                        traceback.print_exc()
+                        
                         # Fallback to URL-based diarization if video_url exists
                         if video_url:
-                            print(f"→ Falling back to URL-based diarization...")
+                            print(f"→ Falling back to URL-based diarization (POST)...")
                             diarization_data = {'video_url': video_url}
-                            resp2 = requests.post(diarization_url, json=diarization_data, timeout=120)
-                            if resp2.ok:
-                                diarization_result = resp2.json()
-                                diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
-                                with open(diarization_filename, 'w') as df:
-                                    json.dump(diarization_result, df)
-                                print(f"✓ Diarization service (URL fallback) returned results")
-                            else:
-                                try:
+                            try:
+                                resp2 = requests.post(diarization_url, json=diarization_data, timeout=120)
+                                print(f"← Diarization service (URL fallback) response: {resp2.status_code}")
+                                
+                                if resp2.ok:
                                     diarization_result = resp2.json()
-                                except Exception:
-                                    diarization_result = {'error': f'Diarization service returned status {resp2.status_code}'}
+                                    diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
+                                    with open(diarization_filename, 'w') as df:
+                                        json.dump(diarization_result, df)
+                                    print(f"✓ Diarization service (URL fallback) returned results")
+                                else:
+                                    try:
+                                        diarization_result = resp2.json()
+                                    except Exception:
+                                        diarization_result = {'error': f'Diarization service returned status {resp2.status_code}'}
+                            except Exception as url_error:
+                                diarization_result = {'error': f'URL fallback failed: {str(url_error)}'}
                         else:
                             diarization_result = {'error': f'File upload failed and no URL available: {str(e)}'}
                 
