@@ -1094,7 +1094,7 @@ def analyze_video_from_url(mentor_id):
         try:
             # Call diarization service if we have either a local video path or a video URL
             if local_video_path or video_url:
-                diarization_url = 'https://papers-mate-prefix-shortcuts.trycloudflare.com/process-video'
+                diarization_url = 'https://test-budapest-consortium-public.trycloudflare.com/process-video'
                 
                 # Priority 1: Send local video file if available
                 if local_video_path and os.path.exists(local_video_path):
