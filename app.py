@@ -628,8 +628,9 @@ def get_session_breakdown(mentor_id, session_id):
             # Normalize the DB document to the canonical schema before returning
             try:
                 normalized = Session.normalize_for_api(breakdown)
+                
                 return jsonify(normalized), 200
-            except Exception:
+            except Exception as e:
                 # Fallback: return the raw breakdown with internal fields stripped
                 if '_id' in breakdown:
                     del breakdown['_id']
@@ -637,6 +638,7 @@ def get_session_breakdown(mentor_id, session_id):
 
         # Fallback to static JSON dummy data
         data_path = os.path.join(os.path.dirname(__file__), 'data', 'session_breakdown.json')
+        
         with open(data_path, 'r') as f:
             data = json.load(f)
 
@@ -644,15 +646,13 @@ def get_session_breakdown(mentor_id, session_id):
         breakdown = data.get(session_id)
 
         if not breakdown:
-            # Return first available breakdown as dummy data if session not found
-            first_key = next(iter(data.keys())) if data else None
-            breakdown = data.get(first_key) if first_key else None
-
-        if not breakdown:
             return jsonify({'error': 'No breakdown data found'}), 404
 
         return jsonify(breakdown), 200
     except Exception as e:
+        print(f"\n✗ Exception: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': f'Failed to load session breakdown: {str(e)}'}), 500
 
 def load_uploaded_sessions():
@@ -941,27 +941,41 @@ def analyze_video_from_url(mentor_id):
                 context_text = data.get('context', '')
                 session_name = data.get('sessionName', session_name)
                 user_id = data.get('userId') or data.get('user_id')
+                upload_mode = data.get('uploadMode', 'file')  # 'file' or 'youtube'
             else:
                 # Get data from form (in case URL is sent as form-data)
                 video_url = request.form.get('videoUrl') or request.form.get('video_url')
                 context_text = request.form.get('context', '')
                 session_name = request.form.get('sessionName', session_name)
                 user_id = request.form.get('userId')
+                upload_mode = request.form.get('uploadMode', 'file')
             
             if not video_url:
                 return jsonify({'error': 'No input provided. Send either: 1) file (multipart/form-data), or 2) videoUrl (JSON or form-data)'}), 400
             
-            # Download and process Cloudinary video
-            try:
-                local_video_path = download_cloudinary_video(video_url, session_id)
-                video_duration = get_video_duration(local_video_path)
-                print(f"✓ URL download: {video_url} (duration: {video_duration}s)")
-                upload_source = 'url'
-                
-            except Exception as e:
-                print(f"⚠ Video download warning: {e}")
-                # Store original URL even if download fails (for fallback processing)
-                upload_source = 'url'
+            # For Cloudinary URLs (from file upload), try to download locally
+            # For YouTube URLs, store as-is (will be handled by analysis service)
+            if 'cloudinary' in video_url.lower() or upload_mode == 'file':
+                try:
+                    local_video_path = download_cloudinary_video(video_url, session_id)
+                    video_duration = get_video_duration(local_video_path)
+                    print(f"✓ Cloudinary video downloaded: {video_url} (duration: {video_duration}s)")
+                    upload_source = 'file'
+                    
+                except Exception as e:
+                    print(f"⚠ Cloudinary video download warning: {e}")
+                    # Store original URL even if download fails (for fallback processing)
+                    upload_source = 'file'
+            else:
+                # YouTube URL or other URL - store as-is without downloading
+                print(f"✓ YouTube/URL mode: {video_url}")
+                upload_source = 'youtube'
+                # Try to get duration if possible, but don't fail if we can't
+                try:
+                    if local_video_path and os.path.exists(local_video_path):
+                        video_duration = get_video_duration(local_video_path)
+                except Exception:
+                    video_duration = 0
         
         else:
             return jsonify({'error': 'Invalid request. Content-Type must be multipart/form-data (for file) or application/json (for URL)'}), 400
@@ -990,13 +1004,14 @@ def analyze_video_from_url(mentor_id):
             'weakMoments': []
         }
 
+        print(new_session)
         # Call external analysis service (service 1) if available
         analysis_result = None
         analysis_filename = None
         try:
             # Call analysis service if we have either a local video path or a video URL
             if local_video_path or video_url:
-                analysis_url = 'https://meanwhile-mono-tested-wisdom.trycloudflare.com/api/v1/analyze-video'
+                analysis_url = os.getenv('ANALYSIS_SERVICE_URL')
                 
                 # Priority 1: Send local video file if available
                 if local_video_path and os.path.exists(local_video_path):
@@ -1094,7 +1109,7 @@ def analyze_video_from_url(mentor_id):
         try:
             # Call diarization service if we have either a local video path or a video URL
             if local_video_path or video_url:
-                diarization_url = 'https://papers-mate-prefix-shortcuts.trycloudflare.com/process-video'
+                diarization_url = os.getenv('DIARIZATION_SERVICE_URL')
                 
                 # Priority 1: Send local video file if available
                 if local_video_path and os.path.exists(local_video_path):

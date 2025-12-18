@@ -1,6 +1,128 @@
 {
   "sessions": [
     {
+      "id": "session_a5fde555",
+      "sessionId": "session_a5fde555",
+      "sessionName": "Session Dec 12 09:53",
+      "created_at": "2025-12-12T09:53:40.982841",
+      "weakMoments": [],
+      "uploadedFile": null,
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af",
+      "score": 82
+    },
+    {
+      "id": "session_54d78ab7",
+      "sessionId": "session_54d78ab7",
+      "sessionName": "Session Dec 12 09:48",
+      "created_at": "2025-12-12T09:48:29.813285",
+      "weakMoments": [
+        {
+          "timestamp": "00:00:00",
+          "message": "Hello everyone, I am Vick Shant. Today we will be learning about OOP (Object-Oriented Programming), a paradigm that structures programs around objects rather than functions and logic. We'll explore its core concepts using a simple coffee machine example."
+        },
+        {
+          "timestamp": "00:00:28",
+          "message": "The first one is encapsulation. Just like a medicine capsule hides its contents, a coffee machine's internal wiring, heating element, and grinder are hidden under its outer casing. In programming, encapsulation means bundling data (attributes) and the methods (functions) that operate on that data within a single unit, and restricting direct access to some of the object's internal details."
+        },
+        {
+          "timestamp": "00:00:51",
+          "message": "Now it may seem like a big term, but it really isn't. Suppose I want an espresso. How do I tell the machine? I just press a button for 'espresso', and it gives me one. I don't care about the internal steps to make an espresso; that's handled by the machine. So, the machine is abstracting the complex function of making an espresso and simply giving me a button. That is abstraction."
+        },
+        {
+          "timestamp": "00:01:12",
+          "message": "Moving on to the next one, it's inheritance. Inheritance is really simple, like inheriting your father's property. In terms of a coffee machine, suppose you have a smaller coffee machine, and then your budget increases, and you buy a premium one. The smaller one might only make espresso and heat water. The premium one, however, makes cappuccino, makes a latte, and definitely makes an espresso and heats water. So, it is inheriting the properties of the base model and also adding its own unique properties. Think of cars: a base version and a higher-end model. The higher-end model has all the features of the base one, plus some extra features. Now, moving on to the last one: polymorphism."
+        },
+        {
+          "timestamp": "00:01:52",
+          "message": "Now, polymorphism seems like a complex term, but it's really simple. What it simply means is 'many forms' or 'multiple forms'. Suppose I have two coffee machines, one of brand X and one of brand Y."
+        },
+        {
+          "timestamp": "00:02:03",
+          "message": "Now, I have a 'brew' button on both of them. When I press the 'brew' button on brand X, it makes an espresso. When I press the same 'brew' button on brand Y, it makes a filter coffee. The same function or the same button performs multiple actions; it appears in multiple forms. That is polymorphism."
+        }
+      ],
+      "uploadedFile": null,
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af"
+    },
+    {
+      "id": "session_2cb07457",
+      "sessionId": "session_2cb07457",
+      "sessionName": "Session Dec 12 08:37",
+      "created_at": "2025-12-12T08:37:24.846914",
+      "weakMoments": [],
+      "uploadedFile": null,
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af"
+    },
+    {
+      "id": "session_0f70ad0e",
+      "sessionId": "session_0f70ad0e",
+      "sessionName": "Session Dec 11 23:25",
+      "created_at": "2025-12-11T23:25:18.422855",
+      "weakMoments": [],
+      "uploadedFile": null,
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af",
+      "score": 61
+    },
+    {
+      "id": "session_d3bb389e",
+      "sessionId": "session_d3bb389e",
+      "sessionName": "Session Dec 11 23:19",
+      "created_at": "2025-12-11T23:19:10.998599",
+      "weakMoments": [],
+      "uploadedFile": null,
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af",
+      "score": 61
+    },
+    {
+      "id": "session_5506b1db",
+      "sessionId": "session_5506b1db",
+      "sessionName": "Session Dec 11 23:12",
+      "created_at": "2025-12-11T23:12:24.191970",
+      "weakMoments": [],
+      "uploadedFile": null,
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af",
+      "score": 61
+    },
+    {
+      "id": "session_83c736c1",
+      "sessionId": "session_83c736c1",
+      "sessionName": "Session Dec 11 23:06",
+      "created_at": "2025-12-11T23:06:03.021434",
+      "weakMoments": [],
+      "uploadedFile": null,
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af",
+      "score": 61
+    },
+    {
+      "id": "session_f7e41a93",
+      "sessionId": "session_f7e41a93",
+      "sessionName": "Session Dec 11 22:57",
+      "created_at": "2025-12-11T22:57:50.759961",
+      "weakMoments": [],
+      "uploadedFile": null,
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af",
+      "score": 61
+    },
+    {
+      "id": "session_9dbee278",
+      "sessionId": "session_9dbee278",
+      "sessionName": "Session Dec 11 22:52",
+      "created_at": "2025-12-11T22:52:45.333365",
+      "weakMoments": [],
+      "uploadedFile": null,
+      "mentorId": "6939b816f8b9afeeeaeb65af",
+      "userId": "6939b816f8b9afeeeaeb65af",
+      "score": 61
+    },
+    {
       "id": "session_f521a9f9",
       "sessionId": "session_f521a9f9",
       "sessionName": "Session Dec 11 22:40",

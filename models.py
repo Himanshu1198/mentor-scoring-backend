@@ -649,7 +649,7 @@ CRITICAL REQUIREMENTS:
         doc.setdefault('sessionId', doc.get('sessionId') or doc.get('id') or '')
         doc.setdefault('sessionName', doc.get('sessionName') or doc.get('name') or f"Session {doc.get('sessionId','')}")
         # ensure videoUrl exists
-        doc.setdefault('videoUrl', doc.get('videoUrl',''))
+        doc.setdefault('videoUrl', doc.get('localVideoPath',''))
 
         # Coerce duration to int
         try:
@@ -853,7 +853,7 @@ CRITICAL REQUIREMENTS:
             if 'duration' not in s or not isinstance(s.get('duration'), (int, float)):
                 s['duration'] = 0
             # Ensure videoUrl exists
-            s.setdefault('videoUrl', '')
+            s.setdefault('localVideoPath', '')
         return s
 
     @staticmethod
@@ -879,7 +879,7 @@ CRITICAL REQUIREMENTS:
         out = {}
         out['sessionId'] = doc.get('sessionId') or doc.get('id') or str(doc.get('_id', ''))
         out['sessionName'] = doc.get('sessionName') or doc.get('name') or f"Session {out['sessionId']}"
-        out['videoUrl'] = doc.get('videoUrl') or doc.get('uploadedFile') or ''
+        out['videoUrl'] = doc.get('localVideoPath') or doc.get('uploadedFile') or ''
 
         # Duration: prefer explicit duration, else try analysis or compute from transcript
         duration = doc.get('duration')
@@ -1120,7 +1120,7 @@ CRITICAL REQUIREMENTS:
         out = {}
         out['sessionId'] = doc.get('sessionId') or doc.get('id') or str(doc.get('_id', ''))
         out['sessionName'] = doc.get('sessionName') or doc.get('name') or f"Session {out['sessionId']}"
-        out['videoUrl'] = doc.get('videoUrl') or doc.get('uploadedFile') or ''
+        out['videoUrl'] = doc.get('localVideoPath') or doc.get('uploadedFile') or ''
 
         # Duration: prefer explicit duration, else try analysis or compute from transcript
         duration = doc.get('duration')
