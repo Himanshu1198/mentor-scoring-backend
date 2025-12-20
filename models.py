@@ -20,6 +20,7 @@ db = client[MONGODB_DB_NAME]
 # Get collections
 users_collection = db['users']
 sessions_collection = db['sessions']
+mentor_profiles_collection = db['mentor_profiles']
 
 
 class User:
@@ -146,6 +147,203 @@ class User:
         return users
 
 
+# Get mentor_profiles collection
+mentor_profiles_collection = db['mentor_profiles']
+
+
+class MentorProfile:
+    """MentorProfile model to store additional mentor information"""
+    
+    @staticmethod
+    def create_or_update_profile(user_id: str, profile_data: dict):
+        """
+        Create or update a mentor profile
+        
+        Args:
+            user_id (str): Reference to User._id
+            profile_data (dict): Profile data including bio, expertise, contact, etc.
+        
+        Returns:
+            dict: The created/updated profile document
+        """
+        from bson.objectid import ObjectId
+        
+        try:
+            user_object_id = ObjectId(user_id)
+        except:
+            user_object_id = user_id
+        
+        profile_doc = {
+            'userId': user_object_id,
+            'bio': profile_data.get('bio', ''),
+            'expertise': profile_data.get('expertise', []),
+            'teachingHighlights': profile_data.get('teachingHighlights', []),
+            'contact': {
+                'email': profile_data.get('contact', {}).get('email', ''),
+                'phone': profile_data.get('contact', {}).get('phone', ''),
+                'linkedin': profile_data.get('contact', {}).get('linkedin', ''),
+                'twitter': profile_data.get('contact', {}).get('twitter', '')
+            },
+            'subject': profile_data.get('subject', 'General'),
+            'language': profile_data.get('language', 'English'),
+            'experienceLevel': profile_data.get('experienceLevel', 'Unknown'),
+            'updated_at': datetime.utcnow()
+        }
+        
+        # Upsert: update if exists, create if not
+        result = mentor_profiles_collection.find_one_and_update(
+            {'userId': user_object_id},
+            {'$set': profile_doc},
+            upsert=True,
+            return_document=True
+        )
+        
+        if result:
+            result['_id'] = str(result['_id'])
+            result['userId'] = str(result['userId'])
+        
+        return result
+    
+    @staticmethod
+    def find_by_user_id(user_id: str):
+        """
+        Find a mentor profile by user ID
+        
+        Args:
+            user_id (str): User's MongoDB ID
+        
+        Returns:
+            dict: Profile document or None
+        """
+        from bson.objectid import ObjectId
+        
+        try:
+            user_object_id = ObjectId(user_id)
+        except:
+            user_object_id = user_id
+        
+        profile = mentor_profiles_collection.find_one({'userId': user_object_id})
+        
+        if profile:
+            profile['_id'] = str(profile['_id'])
+            profile['userId'] = str(profile['userId'])
+        
+        return profile
+    
+    @staticmethod
+    def get_all_profiles():
+        """
+        Get all mentor profiles
+        
+        Returns:
+            list: List of all profile documents
+        """
+        profiles = list(mentor_profiles_collection.find({}))
+        for profile in profiles:
+            profile['_id'] = str(profile['_id'])
+            profile['userId'] = str(profile['userId'])
+        return profiles
+    
+    @staticmethod
+    def update_profile_on_new_session(mentor_id: str, session: dict):
+        """
+        Update mentor profile when a new session is uploaded.
+        Calculates teaching highlights based on session metrics and history.
+        
+        Args:
+            mentor_id (str): Mentor's MongoDB ID
+            session (dict): The newly created session document
+        
+        Returns:
+            dict: Updated profile document or None
+        """
+        from bson.objectid import ObjectId
+        
+        try:
+            mentor_object_id = ObjectId(mentor_id)
+        except:
+            mentor_object_id = mentor_id
+        
+        try:
+            # Get the mentor's profile
+            profile = mentor_profiles_collection.find_one({'userId': mentor_object_id})
+            
+            if not profile:
+                # Profile doesn't exist yet, skip update
+                return None
+            
+            # Get all sessions for this mentor to calculate metrics
+            all_sessions = list(sessions_collection.find({'mentorId': mentor_object_id}))
+            
+            if not all_sessions:
+                return profile
+            
+            # Calculate metrics from all sessions
+            all_scores = []
+            total_students = 0
+            sessions_count = len(all_sessions)
+            
+            for sess in all_sessions:
+                metrics = sess.get('metrics', [])
+                if metrics:
+                    metric_scores = [m.get('score', 0) for m in metrics if isinstance(m.get('score'), (int, float))]
+                    if metric_scores:
+                        all_scores.extend(metric_scores)
+                
+                # Count unique students
+                if sess.get('userId'):
+                    total_students += 1
+            
+            # Generate updated teaching highlights based on metrics
+            teaching_highlights = []
+            
+            if all_scores:
+                avg_score = sum(all_scores) / len(all_scores)
+                teaching_highlights.append(f"Led {sessions_count} sessions with {total_students} unique students")
+                teaching_highlights.append(f"Average session rating: {round(avg_score, 1)}/100")
+                
+                if avg_score >= 90:
+                    teaching_highlights.append("Consistently rated in top tier for teaching excellence")
+                elif avg_score >= 80:
+                    teaching_highlights.append("Strong performance across multiple teaching sessions")
+                elif avg_score >= 70:
+                    teaching_highlights.append("Reliable and consistent mentor with good student feedback")
+            else:
+                teaching_highlights.append(f"Completed {sessions_count} teaching sessions")
+                teaching_highlights.append(f"Working with {total_students} students")
+            
+            # Add achievement if milestone reached
+            if sessions_count >= 10 and len(teaching_highlights) < 4:
+                teaching_highlights.append("10+ sessions milestone achieved")
+            elif sessions_count >= 5 and len(teaching_highlights) < 4:
+                teaching_highlights.append("Trusted by multiple students")
+            
+            # Update the profile with new teaching highlights
+            updated_profile = mentor_profiles_collection.find_one_and_update(
+                {'userId': mentor_object_id},
+                {
+                    '$set': {
+                        'teachingHighlights': teaching_highlights[:4],  # Keep max 4 highlights
+                        'updated_at': datetime.utcnow(),
+                        'totalSessions': sessions_count,
+                        'totalStudents': total_students,
+                        'averageScore': round(sum(all_scores) / len(all_scores), 2) if all_scores else 0
+                    }
+                },
+                return_document=True
+            )
+            
+            if updated_profile:
+                updated_profile['_id'] = str(updated_profile['_id'])
+                updated_profile['userId'] = str(updated_profile['userId'])
+            
+            return updated_profile
+            
+        except Exception as e:
+            print(f"Error updating mentor profile on new session: {str(e)}")
+            return None
+
+
 def init_db():
     """
     Initialize the database with necessary collections and indexes
@@ -158,17 +356,21 @@ def init_db():
     
     # Create index on created_at for sorting
     users_collection.create_index('created_at')
+    
     # Sessions collection indexes
     sessions_collection.create_index('sessionId', unique=True)
     sessions_collection.create_index('mentorId')
     sessions_collection.create_index('userId')
+    
+    # Mentor profiles collection indexes
+    mentor_profiles_collection.create_index('userId', unique=True)
     
     print("✓ Database indexes created")
 
 
 def seed_default_users():
     """
-    Seed the database with default test users
+    Seed the database with default test users and their mentor profiles
     """
     default_users = [
         {
@@ -181,7 +383,26 @@ def seed_default_users():
             'name': 'Dr. Sarah Mentor',
             'email': 'mentor@example.com',
             'password': 'mentor123',
-            'role': 'mentor'
+            'role': 'mentor',
+            'profile': {
+                'bio': 'Computer Science mentor focused on algorithms and systems design. Over 10 years of teaching experience.',
+                'expertise': ['Algorithms', 'System Design', 'Data Structures', 'Problem Solving'],
+                'teachingHighlights': [
+                    'Led 50+ live sessions with consistent 95% student satisfaction',
+                    'Introduced interactive problem-solving sessions that increased engagement by 25%',
+                    'Mentored students into top competitive programming ranks',
+                    'Published comprehensive study guides and coding tutorials'
+                ],
+                'contact': {
+                    'email': 'mentor@example.com',
+                    'phone': '+1 (555) 123-4567',
+                    'linkedin': 'https://www.linkedin.com/in/sarah-mentor',
+                    'twitter': 'https://twitter.com/sarah_teaches'
+                },
+                'subject': 'Computer Science',
+                'language': 'English',
+                'experienceLevel': '10+ years'
+            }
         },
         {
             'name': 'University Admin',
@@ -193,16 +414,33 @@ def seed_default_users():
     
     for user_data in default_users:
         # Check if user already exists
-        if not User.find_by_email(user_data['email']):
-            User.create_user(
+        existing_user = User.find_by_email(user_data['email'])
+        
+        if not existing_user:
+            user = User.create_user(
                 name=user_data['name'],
                 email=user_data['email'],
                 password=user_data['password'],
                 role=user_data['role']
             )
             print(f"✓ Created user: {user_data['email']}")
+            
+            # If this is a mentor, also seed the profile
+            if user_data['role'] == 'mentor' and 'profile' in user_data:
+                user_id = str(user['_id'])
+                MentorProfile.create_or_update_profile(user_id, user_data['profile'])
+                print(f"✓ Created mentor profile for: {user_data['email']}")
         else:
             print(f"✓ User already exists: {user_data['email']}")
+            
+            # If this is a mentor, ensure profile exists
+            if user_data['role'] == 'mentor' and 'profile' in user_data:
+                existing_profile = MentorProfile.find_by_user_id(str(existing_user['_id']))
+                if not existing_profile:
+                    MentorProfile.create_or_update_profile(str(existing_user['_id']), user_data['profile'])
+                    print(f"✓ Created mentor profile for existing user: {user_data['email']}")
+                else:
+                    print(f"✓ Mentor profile already exists: {user_data['email']}")
 
 
 class Session:
@@ -880,7 +1118,7 @@ CRITICAL REQUIREMENTS:
         out['sessionId'] = doc.get('sessionId') or doc.get('id') or str(doc.get('_id', ''))
         out['sessionName'] = doc.get('sessionName') or doc.get('name') or f"Session {out['sessionId']}"
         out['videoUrl'] = doc.get('localVideoPath') or doc.get('uploadedFile') or ''
-
+        
         # Duration: prefer explicit duration, else try analysis or compute from transcript
         duration = doc.get('duration')
         if not isinstance(duration, (int, float)):
@@ -1102,6 +1340,8 @@ CRITICAL REQUIREMENTS:
         # weakMoments if present
         out['weakMoments'] = doc.get('weakMoments', []) or []
 
+        out['diarization'] = doc.get('diarization', {}) or {}
+
         return out
 
     @staticmethod
@@ -1235,6 +1475,12 @@ CRITICAL REQUIREMENTS:
             except Exception:
                 continue
         out['metrics'] = metrics_out
+
+        # Include diarization if present
+        out['diarization'] = doc.get('diarization', {}) or {}
+        
+        # Include weakMoments if present
+        out['weakMoments'] = doc.get('weakMoments', []) or []
 
         return out
 

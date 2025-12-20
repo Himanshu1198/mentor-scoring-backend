@@ -340,6 +340,8 @@ def get_cloudinary_signature():
     """Generate a signed upload signature for Cloudinary uploads."""
     try:
         import hashlib
+        import time
+        
         data = request.get_json()
         mentor_id = data.get('mentorId')
         session_id = data.get('sessionId')
@@ -355,26 +357,32 @@ def get_cloudinary_signature():
             return jsonify({'error': 'Cloudinary credentials not configured'}), 500
         
         # Generate timestamp
-        import time
         timestamp = int(time.time())
         
-        # Build the signature string
+        # Build the signature string - IMPORTANT: use lowercase 'true' for booleans
         public_id = f"mentor_videos/{mentor_id}/{session_id}"
+        
+        # Build params with proper formatting for Cloudinary
         params = {
-            'public_id': public_id,
             'folder': 'mentor_videos',
-            'overwrite': True,
-            'invalidate': True,
+            'invalidate': 'true',  # lowercase boolean
+            'overwrite': 'true',   # lowercase boolean
+            'public_id': public_id,
             'tags': f'mentor,session,{mentor_id}',
             'timestamp': timestamp
         }
         
-        # Sort params alphabetically
-        param_string = '&'.join([f"{k}={v}" for k, v in sorted(params.items())])
+        # Sort params alphabetically for signature
+        sorted_items = sorted(params.items())
+        param_string = '&'.join([f"{k}={v}" for k, v in sorted_items])
         signature_string = f"{param_string}{api_secret}"
+        
+        print(f"DEBUG: Signature string: {signature_string}")
         
         # Generate SHA-1 signature
         signature = hashlib.sha1(signature_string.encode()).hexdigest()
+        
+        print(f"DEBUG: Generated signature: {signature}")
         
         return jsonify({
             'signature': signature,
@@ -440,10 +448,69 @@ def login():
 
 @app.route('/api/auth/register', methods=['POST'])
 def register():
-    """Handle user registration (disabled - use predefined users only)"""
-    return jsonify({
-        'error': 'User registration is disabled. Only predefined users can log in.'
-    }), 403
+    """Handle user registration"""
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    name = data.get('name', '').strip()
+    email = data.get('email', '').strip().lower()
+    password = data.get('password', '')
+    role = data.get('role', '').strip().lower()
+    
+    # Validation
+    if not name or not email or not password or not role:
+        return jsonify({'error': 'Name, email, password, and role are required'}), 400
+    
+    if len(password) < 6:
+        return jsonify({'error': 'Password must be at least 6 characters'}), 400
+    
+    if role not in ['student', 'mentor', 'university']:
+        return jsonify({'error': 'Invalid role. Must be "student", "mentor", or "university"'}), 400
+    
+    # Check if email already exists
+    existing_user = User.find_by_email(email)
+    if existing_user:
+        return jsonify({'error': 'Email already registered'}), 409
+    
+    try:
+        # Create new user
+        new_user = User.create_user(name, email, password, role)
+        
+        # If mentor, create default mentor profile
+        if role == 'mentor':
+            try:
+                from models import MentorProfile
+                default_profile = {
+                    'bio': '',
+                    'expertise': [],
+                    'teachingHighlights': [f'New mentor - {name}'],
+                    'contact': {
+                        'email': email,
+                        'phone': '',
+                        'linkedin': '',
+                        'twitter': ''
+                    },
+                    'subject': 'General',
+                    'language': 'English',
+                    'experienceLevel': 'Beginner'
+                }
+                MentorProfile.create_or_update_profile(str(new_user['_id']), default_profile)
+                print(f"✓ Created default mentor profile for: {email}")
+            except Exception as profile_error:
+                print(f"⚠ Could not create mentor profile during registration: {str(profile_error)}")
+        
+        return jsonify({
+            'message': 'User registered successfully',
+            'id': str(new_user['_id']),
+            'name': new_user['name'],
+            'email': new_user['email'],
+            'role': new_user['role'],
+            'createdAt': new_user['created_at'].isoformat() if hasattr(new_user['created_at'], 'isoformat') else str(new_user['created_at'])
+        }), 201
+    except Exception as e:
+        return jsonify({'error': f'Registration failed: {str(e)}'}), 500
 
 @app.route('/api/mentors', methods=['GET'])
 def get_mentors():
@@ -480,6 +547,128 @@ def search_mentors():
         return jsonify({'mentors': filtered_mentors}), 200
     except Exception as e:
         return jsonify({'error': f'Failed to search mentors: {str(e)}'}), 500
+
+@app.route('/api/mentor-profile/<mentor_id>', methods=['GET'])
+def get_mentor_profile(mentor_id):
+    """Get mentor profile (for authenticated mentor to view their own profile)"""
+    try:
+        from models import MentorProfile
+        
+        # Get user info
+        user = User.find_by_id(mentor_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        if user.get('role') != 'mentor':
+            return jsonify({'error': 'User is not a mentor'}), 403
+        
+        # Get mentor profile data
+        profile = MentorProfile.find_by_user_id(mentor_id)
+        
+        if not profile:
+            # Create default profile if it doesn't exist
+            default_profile = {
+                'bio': '',
+                'expertise': [],
+                'teachingHighlights': [f'Mentor - {user.get("name")}'],
+                'contact': {
+                    'email': user.get('email', ''),
+                    'phone': '',
+                    'linkedin': '',
+                    'twitter': ''
+                },
+                'subject': 'General',
+                'language': 'English',
+                'experienceLevel': 'Beginner'
+            }
+            profile = MentorProfile.create_or_update_profile(mentor_id, default_profile)
+        
+        return jsonify({
+            'id': profile.get('_id'),
+            'userId': profile.get('userId'),
+            'name': user.get('name'),
+            'email': user.get('email'),
+            'bio': profile.get('bio', ''),
+            'expertise': profile.get('expertise', []),
+            'teachingHighlights': profile.get('teachingHighlights', []),
+            'contact': profile.get('contact', {}),
+            'subject': profile.get('subject', 'General'),
+            'language': profile.get('language', 'English'),
+            'experienceLevel': profile.get('experienceLevel', 'Beginner'),
+            'totalSessions': profile.get('totalSessions', 0),
+            'totalStudents': profile.get('totalStudents', 0),
+            'averageScore': profile.get('averageScore', 0)
+        }), 200
+    except Exception as e:
+        print(f"Error getting mentor profile: {str(e)}")
+        return jsonify({'error': f'Failed to get mentor profile: {str(e)}'}), 500
+
+@app.route('/api/mentor-profile/<mentor_id>', methods=['PUT'])
+def update_mentor_profile(mentor_id):
+    """Update mentor profile (for authenticated mentor)"""
+    try:
+        from models import MentorProfile
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        # Verify user exists and is a mentor
+        user = User.find_by_id(mentor_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        if user.get('role') != 'mentor':
+            return jsonify({'error': 'User is not a mentor'}), 403
+        
+        # Update mentor profile
+        profile_data = {
+            'bio': data.get('bio', ''),
+            'expertise': data.get('expertise', []),
+            'contact': {
+                'email': data.get('contact', {}).get('email', user.get('email', '')),
+                'phone': data.get('contact', {}).get('phone', ''),
+                'linkedin': data.get('contact', {}).get('linkedin', ''),
+                'twitter': data.get('contact', {}).get('twitter', '')
+            },
+            'subject': data.get('subject', 'General'),
+            'language': data.get('language', 'English'),
+            'experienceLevel': data.get('experienceLevel', 'Beginner')
+        }
+        
+        # Keep existing teaching highlights if not provided
+        if 'teachingHighlights' not in data:
+            existing_profile = MentorProfile.find_by_user_id(mentor_id)
+            if existing_profile:
+                profile_data['teachingHighlights'] = existing_profile.get('teachingHighlights', [])
+            else:
+                profile_data['teachingHighlights'] = []
+        else:
+            profile_data['teachingHighlights'] = data.get('teachingHighlights', [])
+        
+        # Update profile
+        updated_profile = MentorProfile.create_or_update_profile(mentor_id, profile_data)
+        
+        return jsonify({
+            'message': 'Profile updated successfully',
+            'id': updated_profile.get('_id'),
+            'userId': updated_profile.get('userId'),
+            'name': user.get('name'),
+            'email': user.get('email'),
+            'bio': updated_profile.get('bio', ''),
+            'expertise': updated_profile.get('expertise', []),
+            'teachingHighlights': updated_profile.get('teachingHighlights', []),
+            'contact': updated_profile.get('contact', {}),
+            'subject': updated_profile.get('subject', 'General'),
+            'language': updated_profile.get('language', 'English'),
+            'experienceLevel': updated_profile.get('experienceLevel', 'Beginner'),
+            'totalSessions': updated_profile.get('totalSessions', 0),
+            'totalStudents': updated_profile.get('totalStudents', 0),
+            'averageScore': updated_profile.get('averageScore', 0)
+        }), 200
+    except Exception as e:
+        print(f"Error updating mentor profile: {str(e)}")
+        return jsonify({'error': f'Failed to update mentor profile: {str(e)}'}), 500
 
 @app.route('/api/audio/<video_id>', methods=['GET'])
 def get_audio_for_video(video_id):
@@ -578,24 +767,276 @@ def get_transcription(audio_id):
 
 @app.route('/api/mentor/<mentor_id>/snapshot', methods=['GET'])
 def get_mentor_snapshot(mentor_id):
-    """Get mentor snapshot data"""
+    """Get mentor snapshot data - calculates real metrics from database sessions"""
     try:
-        data_path = os.path.join(os.path.dirname(__file__), 'data', 'mentor_snapshot.json')
-        with open(data_path, 'r') as f:
-            data = json.load(f)
-        return jsonify(data), 200
+        # Fetch all sessions for this mentor from the database
+        sessions = Session.find_by_mentor(mentor_id)
+        
+        if not sessions:
+            # Return default snapshot if no sessions exist
+            return jsonify({
+                'mentorId': mentor_id,
+                'overallScore': 0,
+                'changeVsLastMonth': 0,
+                'percentileAmongPeers': 0,
+                'sessionsCount': 0,
+                'lastUpdated': datetime.utcnow().isoformat() + 'Z'
+            }), 200
+        
+        # Extract scores from all sessions
+        all_scores = []
+        this_month_scores = []
+        last_month_scores = []
+        
+        current_date = datetime.utcnow()
+        
+        for session in sessions:
+            # Get the session score from metrics
+            metrics = session.get('metrics', [])
+            if metrics and len(metrics) > 0:
+                # Calculate average of all metric scores
+                metric_scores = [m.get('score', 0) for m in metrics if isinstance(m.get('score'), (int, float))]
+                if metric_scores:
+                    session_score = sum(metric_scores) / len(metric_scores)
+                    all_scores.append(session_score)
+                    
+                    # Determine if session is from this month or last month
+                    session_date = session.get('created_at')
+                    if isinstance(session_date, str):
+                        session_date = datetime.fromisoformat(session_date.replace('Z', '+00:00'))
+                    elif not isinstance(session_date, datetime):
+                        session_date = current_date
+                    
+                    # Check if session is in current month
+                    if (session_date.year == current_date.year and 
+                        session_date.month == current_date.month):
+                        this_month_scores.append(session_score)
+                    # Check if session is in last month
+                    elif (session_date.year == current_date.year and 
+                          session_date.month == current_date.month - 1) or \
+                         (session_date.year == current_date.year - 1 and 
+                          session_date.month == 12 and current_date.month == 1):
+                        last_month_scores.append(session_score)
+        
+        # Calculate overall score (average of all sessions)
+        overall_score = sum(all_scores) / len(all_scores) if all_scores else 0
+        
+        # Calculate change vs last month
+        this_month_avg = sum(this_month_scores) / len(this_month_scores) if this_month_scores else 0
+        last_month_avg = sum(last_month_scores) / len(last_month_scores) if last_month_scores else 0
+        change_vs_last_month = this_month_avg - last_month_avg if last_month_avg > 0 else 0
+        
+        # Calculate percentile among peers (relative to all mentors)
+        # Get average score for all mentors
+        try:
+            all_mentors_data = User.find({'role': 'mentor'})  # Get all mentors from DB
+            mentor_scores = []
+            
+            for mentor in all_mentors_data:
+                mentor_id_db = str(mentor.get('_id'))
+                mentor_sessions = Session.find_by_mentor(mentor_id_db)
+                
+                if mentor_sessions:
+                    mentor_metrics = []
+                    for sess in mentor_sessions:
+                        sess_metrics = sess.get('metrics', [])
+                        for m in sess_metrics:
+                            if isinstance(m.get('score'), (int, float)):
+                                mentor_metrics.append(m.get('score'))
+                    
+                    if mentor_metrics:
+                        mentor_avg_score = sum(mentor_metrics) / len(mentor_metrics)
+                        mentor_scores.append({
+                            'mentor_id': mentor_id_db,
+                            'score': mentor_avg_score
+                        })
+            
+            # Calculate percentile for current mentor
+            if mentor_scores:
+                mentor_scores_list = [m['score'] for m in mentor_scores]
+                mentor_scores_sorted = sorted(mentor_scores_list, reverse=True)
+                current_mentor_rank = mentor_scores_sorted.index(overall_score) + 1 if overall_score in mentor_scores_sorted else len(mentor_scores_sorted)
+                percentile = max(1, 100 - int((current_mentor_rank - 1) / len(mentor_scores_sorted) * 100))
+            else:
+                # If no other mentors, this mentor is in 100th percentile
+                percentile = 100
+        except Exception as e:
+            print(f"⚠ Warning in percentile calculation: {str(e)}")
+            # Fallback: if only this mentor has sessions, they're in 100th percentile
+            percentile = 100
+        
+        snapshot_data = {
+            'mentorId': mentor_id,
+            'overallScore': round(overall_score, 2),
+            'changeVsLastMonth': round(change_vs_last_month, 2),
+            'percentileAmongPeers': percentile,
+            'sessionsCount': len(all_scores),
+            'thisMonthSessionsCount': len(this_month_scores),
+            'lastMonthSessionsCount': len(last_month_scores),
+            'lastUpdated': datetime.utcnow().isoformat() + 'Z'
+        }
+        
+        return jsonify(snapshot_data), 200
+        
     except Exception as e:
+        print(f"✗ Error in get_mentor_snapshot: {str(e)}")
         return jsonify({'error': f'Failed to load mentor snapshot: {str(e)}'}), 500
 
 @app.route('/api/mentor/<mentor_id>/skills', methods=['GET'])
 def get_mentor_skills(mentor_id):
-    """Get mentor skills data"""
+    """Get mentor skills data - calculates real metrics from database sessions"""
     try:
-        data_path = os.path.join(os.path.dirname(__file__), 'data', 'mentor_skills.json')
-        with open(data_path, 'r') as f:
-            data = json.load(f)
-        return jsonify(data), 200
+        # Fetch all sessions for this mentor from the database
+        sessions = Session.find_by_mentor(mentor_id)
+        
+        if not sessions:
+            # Return default skills if no sessions exist
+            return jsonify({
+                'mentorId': mentor_id,
+                'skills': []
+            }), 200
+        
+        # Map to store skill metrics across all sessions
+        skills_map = {}
+        current_date = datetime.utcnow()
+        
+        # Process each session to extract skill metrics
+        for session in sessions:
+            metrics = session.get('metrics', [])
+            session_date = session.get('created_at')
+            
+            if isinstance(session_date, str):
+                try:
+                    session_date = datetime.fromisoformat(session_date.replace('Z', '+00:00'))
+                except:
+                    session_date = current_date
+            elif not isinstance(session_date, datetime):
+                session_date = current_date
+            
+            # Get month key for history grouping
+            month_key = session_date.strftime('%Y-%m')
+            
+            # Process each metric as a skill
+            for metric in metrics:
+                if not isinstance(metric, dict):
+                    continue
+                
+                metric_name = metric.get('name')
+                metric_score = metric.get('score', 0)
+                
+                if not metric_name:
+                    continue
+                
+                # Initialize skill entry if not exists
+                if metric_name not in skills_map:
+                    skills_map[metric_name] = {
+                        'name': metric_name,
+                        'scores': [],
+                        'history': {}
+                    }
+                
+                # Add score to overall scores
+                if isinstance(metric_score, (int, float)):
+                    skills_map[metric_name]['scores'].append(metric_score)
+                
+                # Add to history by month
+                if month_key not in skills_map[metric_name]['history']:
+                    skills_map[metric_name]['history'][month_key] = []
+                skills_map[metric_name]['history'][month_key].append(metric_score)
+        
+        # Calculate peer average for each skill across all mentors
+        peer_averages = {}
+        try:
+            all_mentors_data = User.find({'role': 'mentor'})  # Get all mentors from DB
+            
+            for mentor in all_mentors_data:
+                mentor_id_db = str(mentor.get('_id'))
+                mentor_sessions = Session.find_by_mentor(mentor_id_db)
+                
+                if mentor_sessions:
+                    for session in mentor_sessions:
+                        metrics = session.get('metrics', [])
+                        for metric in metrics:
+                            if not isinstance(metric, dict):
+                                continue
+                            
+                            metric_name = metric.get('name')
+                            metric_score = metric.get('score', 0)
+                            
+                            if not metric_name:
+                                continue
+                            
+                            if metric_name not in peer_averages:
+                                peer_averages[metric_name] = []
+                            
+                            if isinstance(metric_score, (int, float)):
+                                peer_averages[metric_name].append(metric_score)
+            
+            # Convert to averages
+            for skill_name in peer_averages:
+                scores = peer_averages[skill_name]
+                if scores:
+                    peer_averages[skill_name] = sum(scores) / len(scores)
+                else:
+                    peer_averages[skill_name] = 0
+        except Exception as e:
+            print(f"⚠ Warning in peer average calculation: {str(e)}")
+            peer_averages = {}
+        
+        # Build final skills array with calculated trends
+        skills = []
+        
+        for skill_name, skill_data in sorted(skills_map.items()):
+            scores = skill_data['scores']
+            if not scores:
+                continue
+            
+            current_score = sum(scores) / len(scores)
+            
+            # Calculate history by month
+            history = []
+            for month_key in sorted(skill_data['history'].keys()):
+                month_scores = skill_data['history'][month_key]
+                month_avg = sum(month_scores) / len(month_scores)
+                history.append({
+                    'month': month_key,
+                    'score': round(month_avg, 2)
+                })
+            
+            # Get previous score (from previous month or from earlier sessions)
+            previous_score = current_score
+            if len(history) > 1:
+                previous_score = history[-2]['score']
+            
+            # Determine trend
+            trend = 'stable'
+            if current_score > previous_score:
+                trend = 'up'
+            elif current_score < previous_score:
+                trend = 'down'
+            
+            # Get peer average for this skill (from all mentors)
+            peer_average = peer_averages.get(skill_name, current_score)
+            
+            skills.append({
+                'name': skill_name,
+                'currentScore': round(current_score, 2),
+                'previousScore': round(previous_score, 2),
+                'trend': trend,
+                'peerAverage': round(peer_average, 2),
+                'history': history[-12:] if len(history) > 12 else history  # Last 12 months
+            })
+        
+        skills_data = {
+            'mentorId': mentor_id,
+            'skills': skills,
+            'lastUpdated': datetime.utcnow().isoformat() + 'Z'
+        }
+        
+        return jsonify(skills_data), 200
+        
     except Exception as e:
+        print(f"✗ Error in get_mentor_skills: {str(e)}")
         return jsonify({'error': f'Failed to load mentor skills: {str(e)}'}), 500
 
 @app.route('/api/mentor/<mentor_id>/sessions', methods=['GET'])
@@ -628,7 +1069,7 @@ def get_session_breakdown(mentor_id, session_id):
             # Normalize the DB document to the canonical schema before returning
             try:
                 normalized = Session.normalize_for_api(breakdown)
-                
+                print(normalized)
                 return jsonify(normalized), 200
             except Exception as e:
                 # Fallback: return the raw breakdown with internal fields stripped
@@ -1354,11 +1795,29 @@ def analyze_video_from_url(mentor_id):
             # Save to DB
             try:
                 saved = Session.create_session(new_session)
+                
+                # Update mentor profile with new session metrics
+                if saved and mentor_id:
+                    try:
+                        from models import MentorProfile
+                        MentorProfile.update_profile_on_new_session(mentor_id, saved)
+                        print(f"✓ Updated mentor profile for {mentor_id} after new session")
+                    except Exception as profile_update_error:
+                        print(f"⚠ Could not update mentor profile: {str(profile_update_error)}")
             except Exception:
                 saved = None
         except Exception as e:
             try:
                 saved = Session.create_session(new_session)
+                
+                # Update mentor profile with new session metrics
+                if saved and mentor_id:
+                    try:
+                        from models import MentorProfile
+                        MentorProfile.update_profile_on_new_session(mentor_id, saved)
+                        print(f"✓ Updated mentor profile for {mentor_id} after new session")
+                    except Exception as profile_update_error:
+                        print(f"⚠ Could not update mentor profile: {str(profile_update_error)}")
             except Exception:
                 saved = None
 
@@ -1413,25 +1872,139 @@ def analyze_video_from_url(mentor_id):
 def get_public_rankings():
     """Public leaderboard with compact filters; returns normalized scores only."""
     try:
-        data = load_public_rankings()
-        rankings = data.get('rankings', [])
-
+        # Get filter parameters
         subject = request.args.get('subject')
         language = request.args.get('language')
         experience = request.args.get('experience')
         window = request.args.get('window')
+        
+        # Get all mentors from database
+        try:
+            from models import users_collection
+            mentor_docs = list(users_collection.find({'role': 'mentor'}))
+            print(f"✓ Found {len(mentor_docs)} mentors in database")
+        except Exception as db_error:
+            print(f"✗ Error fetching mentors from DB: {str(db_error)}")
+            mentor_docs = []
+        
+        if not mentor_docs:
+            print("⚠ No mentors found in database, falling back to static data")
+            # Fallback to static data
+            data = load_public_rankings()
+            rankings = data.get('rankings', [])
+            
+            subject = request.args.get('subject')
+            language = request.args.get('language')
+            experience = request.args.get('experience')
+            window = request.args.get('window')
 
+            def matches(item):
+                return (
+                    (not subject or item.get('subject') == subject) and
+                    (not language or item.get('language') == language) and
+                    (not experience or item.get('experienceLevel') == experience) and
+                    (not window or item.get('timeWindow') == window)
+                )
+
+            filtered = [r for r in rankings if matches(r)]
+
+            sanitized = [
+                {
+                    'id': r.get('id'),
+                    'rank': r.get('rank'),
+                    'name': r.get('name'),
+                    'verified': r.get('verified', False),
+                    'overallScore': r.get('overallScore'),
+                    'strengthTag': r.get('strengthTag'),
+                    'avgScoreTrend': r.get('avgScoreTrend', []),
+                }
+                for r in filtered
+            ]
+
+            return jsonify({
+                'filters': data.get('filters', {}),
+                'rankings': sanitized
+            }), 200
+        
+        # Build rankings from database mentors with their session scores
+        rankings_list = []
+        
+        for mentor in mentor_docs:
+            mentor_id = str(mentor.get('_id'))
+            mentor_name = mentor.get('name', 'Unknown Mentor')
+            
+            print(f"  Processing mentor: {mentor_name} ({mentor_id})")
+            
+            # Get sessions for this mentor
+            try:
+                sessions = Session.find_by_mentor(mentor_id)
+                print(f"    Found {len(sessions) if sessions else 0} sessions")
+            except Exception as session_error:
+                print(f"    Error fetching sessions: {str(session_error)}")
+                sessions = []
+            
+            # Calculate mentor's overall score
+            all_scores = []
+            for session in sessions:
+                metrics = session.get('metrics', [])
+                if metrics:
+                    metric_scores = [m.get('score', 0) for m in metrics if isinstance(m.get('score'), (int, float))]
+                    if metric_scores:
+                        session_avg = sum(metric_scores) / len(metric_scores)
+                        all_scores.append(session_avg)
+            
+            # Use overall score if available, otherwise default to 0
+            if all_scores:
+                overall_score = sum(all_scores) / len(all_scores)
+            else:
+                overall_score = 0
+            
+            # Determine strength tag based on score
+            if overall_score >= 90:
+                strength_tag = "Best Engagement"
+            elif overall_score >= 80:
+                strength_tag = "Top 10% in Clarity"
+            elif overall_score >= 70:
+                strength_tag = "Consistent Performer"
+            else:
+                strength_tag = "Developing"
+            
+            # Build trend (last 4 scores)
+            avg_score_trend = all_scores[-4:] if len(all_scores) >= 4 else all_scores
+            
+            ranking_entry = {
+                'id': mentor_id,
+                'name': mentor_name,
+                'verified': mentor.get('verified', False),
+                'overallScore': round(overall_score, 2),
+                'strengthTag': strength_tag,
+                'avgScoreTrend': [round(s, 2) for s in avg_score_trend],
+                'subject': mentor.get('subject', 'General'),
+                'language': mentor.get('language', 'English'),
+                'experienceLevel': mentor.get('experienceLevel', 'Unknown'),
+                'timeWindow': window or 'weekly'
+            }
+            
+            rankings_list.append(ranking_entry)
+        
+        # Sort by overall score descending
+        rankings_list.sort(key=lambda x: x['overallScore'], reverse=True)
+        
+        # Add ranks
+        for idx, ranking in enumerate(rankings_list):
+            ranking['rank'] = idx + 1
+        
+        # Apply filters
         def matches(item):
             return (
                 (not subject or item.get('subject') == subject) and
                 (not language or item.get('language') == language) and
-                (not experience or item.get('experienceLevel') == experience) and
-                (not window or item.get('timeWindow') == window)
+                (not experience or item.get('experienceLevel') == experience)
             )
-
-        filtered = [r for r in rankings if matches(r)]
-
-        # Remove any raw fields if present; keep normalized view only
+        
+        filtered = [r for r in rankings_list if matches(r)]
+        
+        # Sanitize output - remove internal fields
         sanitized = [
             {
                 'id': r.get('id'),
@@ -1444,13 +2017,62 @@ def get_public_rankings():
             }
             for r in filtered
         ]
-
+        
+        # Get filter options from all mentors
+        all_subjects = list(set([m.get('subject', 'General') for m in mentor_docs]))
+        all_languages = list(set([m.get('language', 'English') for m in mentor_docs]))
+        all_experience_levels = list(set([m.get('experienceLevel', 'Unknown') for m in mentor_docs]))
+        
+        filters = {
+            'subjects': sorted(all_subjects),
+            'languages': sorted(all_languages),
+            'experienceLevels': sorted(all_experience_levels),
+            'timeWindows': ['weekly', 'monthly']
+        }
+        
+        print(f"✓ Returning {len(sanitized)} mentors with filters: {filters}")
+        
         return jsonify({
-            'filters': data.get('filters', {}),
+            'filters': filters,
             'rankings': sanitized
         }), 200
     except Exception as e:
-        return jsonify({'error': f'Failed to load public rankings: {str(e)}'}), 500
+        print(f"✗ Error in get_public_rankings: {str(e)}")
+        print(f"✗ Traceback: ", exc_info=True)
+        # Fallback to static data if DB fails
+        try:
+            data = load_public_rankings()
+            rankings = data.get('rankings', [])
+            
+            def matches(item):
+                return (
+                    (not subject or item.get('subject') == subject) and
+                    (not language or item.get('language') == language) and
+                    (not experience or item.get('experienceLevel') == experience) and
+                    (not window or item.get('timeWindow') == window)
+                )
+            
+            filtered = [r for r in rankings if matches(r)]
+            
+            sanitized = [
+                {
+                    'id': r.get('id'),
+                    'rank': r.get('rank'),
+                    'name': r.get('name'),
+                    'verified': r.get('verified', False),
+                    'overallScore': r.get('overallScore'),
+                    'strengthTag': r.get('strengthTag'),
+                    'avgScoreTrend': r.get('avgScoreTrend', []),
+                }
+                for r in filtered
+            ]
+            
+            return jsonify({
+                'filters': data.get('filters', {}),
+                'rankings': sanitized
+            }), 200
+        except Exception as fallback_error:
+            return jsonify({'error': f'Failed to load rankings: {str(e)}'}), 500
 
 
 @app.route('/api/mentor/<mentor_id>/sessions/<session_id>/video', methods=['GET'])
@@ -1476,28 +2098,447 @@ def serve_session_video(mentor_id, session_id):
 def get_public_mentor_profile(mentor_id):
     """Public mentor profile with only strengths and highlights."""
     try:
-        data = load_public_rankings()
-        profile = data.get('profiles', {}).get(mentor_id)
-
-        if not profile:
+        print(f"Fetching profile for mentor: {mentor_id}")
+        
+        # Try to get mentor from database first
+        mentor = User.find_by_id(mentor_id)
+        
+        if not mentor:
+            print(f"Mentor {mentor_id} not found in database")
             return jsonify({'error': 'Mentor not found'}), 404
-
+        
+        print(f"Found mentor: {mentor.get('name')}")
+        
+        mentor_name = mentor.get('name', 'Unknown Mentor')
+        mentor_verified = mentor.get('verified', False)
+        
+        # Get mentor profile data from MentorProfile collection
+        try:
+            from models import MentorProfile
+            mentor_profile = MentorProfile.find_by_user_id(mentor_id)
+            print(f"Found mentor profile: {mentor_profile is not None}")
+        except Exception as profile_error:
+            print(f"Error fetching mentor profile: {str(profile_error)}")
+            mentor_profile = None
+        
+        # Use profile data if available, otherwise use defaults
+        if mentor_profile:
+            mentor_bio = mentor_profile.get('bio', '')
+            mentor_expertise = mentor_profile.get('expertise', [])
+            mentor_contact = mentor_profile.get('contact', {})
+            teaching_highlights_from_profile = mentor_profile.get('teachingHighlights', [])
+        else:
+            mentor_bio = ''
+            mentor_expertise = []
+            mentor_contact = {}
+            teaching_highlights_from_profile = []
+        
+        # Get sessions for this mentor to calculate scores
+        try:
+            sessions = Session.find_by_mentor(mentor_id)
+            print(f"Found {len(sessions) if sessions else 0} sessions for mentor")
+        except Exception as session_error:
+            print(f"Error fetching sessions: {str(session_error)}")
+            sessions = []
+        
+        # Calculate overall score and trends
+        all_scores = []
+        for session in sessions:
+            metrics = session.get('metrics', [])
+            if metrics:
+                metric_scores = [m.get('score', 0) for m in metrics if isinstance(m.get('score'), (int, float))]
+                if metric_scores:
+                    session_avg = sum(metric_scores) / len(metric_scores)
+                    all_scores.append(session_avg)
+        
+        # Determine strength tag based on score
+        if all_scores:
+            overall_score = sum(all_scores) / len(all_scores)
+            if overall_score >= 90:
+                strength_tag = "Best Engagement"
+            elif overall_score >= 80:
+                strength_tag = "Top 10% in Clarity"
+            elif overall_score >= 70:
+                strength_tag = "Consistent Performer"
+            else:
+                strength_tag = "Developing"
+        else:
+            strength_tag = "No sessions yet"
+        
+        # Build trend (last 4 scores)
+        avg_score_trend = all_scores[-4:] if len(all_scores) >= 4 else all_scores
+        
+        # Get peer badges
+        peer_badges = []
+        if all_scores and len(all_scores) > 0:
+            avg = sum(all_scores) / len(all_scores)
+            if avg >= 95:
+                peer_badges.append("Top 5% in Engagement")
+            if avg >= 90:
+                peer_badges.append("Top 10% in Clarity")
+            if len(all_scores) >= 50:
+                peer_badges.append("Most Active Mentor")
+        
+        # Use teaching highlights from profile, or generate from sessions
+        teaching_highlights = teaching_highlights_from_profile
+        if not teaching_highlights and sessions:
+            # Generate highlights from session data
+            teaching_highlights = [
+                f"Completed {len(sessions)} sessions with students",
+                f"Average mentor score: {round(sum(all_scores) / len(all_scores), 2)}" if all_scores else "No scores yet"
+            ]
+        
         public_profile = {
-            'id': profile.get('id'),
-            'name': profile.get('name'),
-            'verified': profile.get('verified', False),
-            'bio': profile.get('bio'),
-            'expertise': profile.get('expertise', []),
-            'strengthTag': profile.get('strengthTag'),
-            'avgScoreTrend': profile.get('avgScoreTrend', []),
-            'peerBadges': profile.get('peerBadges', []),
-            'teachingHighlights': profile.get('teachingHighlights', []),
-            'contact': profile.get('contact', {})
+            'id': str(mentor.get('_id')),
+            'name': mentor_name,
+            'verified': mentor_verified,
+            'bio': mentor_bio,
+            'expertise': mentor_expertise,
+            'strengthTag': strength_tag,
+            'avgScoreTrend': [round(s, 2) for s in avg_score_trend],
+            'peerBadges': peer_badges,
+            'teachingHighlights': teaching_highlights,
+            'contact': mentor_contact
         }
-
+        
+        print(f"Returning profile: {public_profile}")
+        
         return jsonify(public_profile), 200
     except Exception as e:
-        return jsonify({'error': f'Failed to load mentor profile: {str(e)}'}), 500
+        print(f"✗ Error in get_public_mentor_profile: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        # Fallback to static data
+        try:
+            data = load_public_rankings()
+            profile = data.get('profiles', {}).get(mentor_id)
+            
+            if not profile:
+                return jsonify({'error': 'Mentor not found'}), 404
+            
+            public_profile = {
+                'id': profile.get('id'),
+                'name': profile.get('name'),
+                'verified': profile.get('verified', False),
+                'bio': profile.get('bio'),
+                'expertise': profile.get('expertise', []),
+                'strengthTag': profile.get('strengthTag'),
+                'avgScoreTrend': profile.get('avgScoreTrend', []),
+                'peerBadges': profile.get('peerBadges', []),
+                'teachingHighlights': profile.get('teachingHighlights', []),
+                'contact': profile.get('contact', {})
+            }
+            
+            return jsonify(public_profile), 200
+        except Exception as fallback_error:
+            return jsonify({'error': f'Failed to load mentor profile: {str(e)}'}), 500
+
+@app.route('/api/mentor/<mentor_id>/sessions/create-from-analysis', methods=['POST'])
+def create_session_from_s3_analysis(mentor_id):
+    """
+    Create a session from S3 analysis results.
+    
+    This endpoint receives pre-analyzed video data from the S3 service and maps it
+    to the MongoDB schema for storage.
+    
+    Expected payload:
+    {
+        "videoId": "mongo_object_id",
+        "videoUrl": "https://s3-playback-url.mp4",
+        "sessionName": "Session name",
+        "userId": "user_id",
+        "context": "session context (optional)",
+        "analysisResults": {
+            "batch_id": "...",
+            "total_chunks": 2,
+            "results": [
+                {
+                    "transcript": "full transcript",
+                    "communication": {...},
+                    "engagement": {...},
+                    "clarity": {...},
+                    "interaction": {...},
+                    "overall_score": 78.49
+                },
+                ...
+            ]
+        }
+    }
+    """
+    try:
+        data = request.get_json() or {}
+        
+        if not data:
+            return jsonify({'error': 'Request body cannot be empty'}), 400
+        
+        # Extract fields from frontend
+        video_id = data.get('videoId') or str(uuid.uuid4())
+        video_url = data.get('videoUrl')
+        session_name = data.get('sessionName') or f"Session {datetime.utcnow().strftime('%b %d %H:%M')}"
+        user_id = data.get('userId')
+        context_text = data.get('context', '')
+        analysis_results = data.get('analysisResults') or {}
+        
+        if not video_url:
+            return jsonify({'error': 'videoUrl is required'}), 400
+        
+        # ============ STEP 1: Parse analysis results from S3 ============
+        print(f"→ Processing analysis results for video: {video_id}")
+        
+        # Extract metrics from all chunks and aggregate
+        all_metrics = []
+        all_transcripts = []
+        total_duration = 0
+        overall_scores = []
+        
+        # Process results from each chunk
+        results_list = analysis_results.get('results', [])
+        
+        for chunk_result in results_list:
+            # Aggregate transcript
+            transcript = chunk_result.get('transcript', '')
+            if transcript:
+                all_transcripts.append(transcript)
+            
+            # Get duration
+            duration = chunk_result.get('duration', 0)
+            total_duration += duration
+            
+            # Collect overall score
+            overall = chunk_result.get('overall_score', 0)
+            if overall:
+                overall_scores.append(float(overall))
+        
+        # ============ STEP 2: Build metrics array (per chunk analysis) ============
+        # Map chunk results to metric scores
+        metric_keys = {
+            'communication': 'Communication',
+            'clarity': 'Clarity',
+            'engagement': 'Engagement',
+            'interaction': 'Interaction',
+        }
+        
+        # Aggregate scores from all chunks
+        aggregated_scores = {}
+        chunk_count = len(results_list)
+        
+        for chunk_result in results_list:
+            for key, label in metric_keys.items():
+                metric_data = chunk_result.get(key, {})
+                score = None
+                
+                if isinstance(metric_data, dict):
+                    score = metric_data.get('score')
+                elif isinstance(metric_data, (int, float)):
+                    score = metric_data
+                
+                if score is not None:
+                    try:
+                        score = int(float(score))
+                        score = max(0, min(100, score))
+                        if label not in aggregated_scores:
+                            aggregated_scores[label] = []
+                        aggregated_scores[label].append(score)
+                    except Exception:
+                        pass
+        
+        # Calculate average scores for each metric
+        metrics = []
+        for label, scores in aggregated_scores.items():
+            if scores:
+                avg_score = sum(scores) / len(scores)
+                avg_score = int(avg_score)
+                metrics.append({
+                    'name': label,
+                    'score': avg_score,
+                    'confidenceInterval': [max(0, avg_score - 5), min(100, avg_score + 5)],
+                    'whatHelped': [],
+                    'whatHurt': []
+                })
+        
+        # Calculate overall average score
+        if overall_scores:
+            overall_avg = sum(overall_scores) / len(overall_scores)
+            overall_avg = int(overall_avg)
+        else:
+            overall_avg = 75
+        
+        metrics.append({
+            'name': 'Overall',
+            'score': overall_avg,
+            'confidenceInterval': [max(0, overall_avg - 5), min(100, overall_avg + 5)],
+            'whatHelped': [],
+            'whatHurt': []
+        })
+        
+        print(f"✓ Extracted metrics from {chunk_count} chunks")
+        
+        # ============ STEP 3: Build transcript timeline ============
+        # Aggregate all transcripts with timing
+        full_transcript = ' '.join(all_transcripts)
+        timeline_transcript = []
+        
+        # Create transcript segments
+        if all_transcripts:
+            current_time = 0
+            segment_duration = total_duration / len(all_transcripts) if len(all_transcripts) > 0 else 0
+            
+            for idx, transcript_text in enumerate(all_transcripts):
+                start_time = current_time
+                end_time = start_time + (segment_duration if segment_duration > 0 else total_duration)
+                
+                # Extract key phrases (simple approach: split by space and take meaningful words)
+                words = transcript_text.split()
+                key_phrases = [w for w in words if len(w) > 4][:5]  # Take first 5 words > 4 chars
+                
+                timeline_transcript.append({
+                    'startTime': float(start_time),
+                    'endTime': float(end_time),
+                    'text': transcript_text,
+                    'keyPhrases': key_phrases
+                })
+                
+                current_time = end_time
+        
+        print(f"✓ Built transcript timeline with {len(timeline_transcript)} segments")
+        
+        # ============ STEP 4: Create dummy diarization data (no API available) ============
+        diarization_result = {
+            'batch_id': analysis_results.get('batch_id', str(uuid.uuid4())),
+            'sentences': [
+                {
+                    'start': float(idx * (total_duration / len(all_transcripts)) if len(all_transcripts) > 0 else 0),
+                    'end': float((idx + 1) * (total_duration / len(all_transcripts)) if len(all_transcripts) > 0 else total_duration),
+                    'text': transcript[:200] if (idx < len(all_transcripts)) else 'Session content',
+                    'needs_improvement': False,
+                    'improvement': {'suggestion': '', 'reason': ''}
+                }
+                for idx, transcript in enumerate(all_transcripts)
+            ],
+            'status': 'dummy_data'
+        }
+        
+        print(f"✓ Created dummy diarization data")
+        
+        # ============ STEP 5: Build weak moments from analysis ============
+        weak_moments = []
+        current_time = 0
+        
+        for chunk_idx, chunk_result in enumerate(results_list):
+            # Extract issues from communication, engagement, etc.
+            communication = chunk_result.get('communication', {})
+            if isinstance(communication, dict):
+                score = communication.get('score', 0)
+                if score < 70:
+                    weak_moments.append({
+                        'timestamp': _format_timestamp(current_time),
+                        'message': f"Communication score: {score}. Focus on speaking pace and clarity."
+                    })
+            
+            engagement = chunk_result.get('engagement', {})
+            if isinstance(engagement, dict):
+                score = engagement.get('score', 0)
+                if score < 60:
+                    weak_moments.append({
+                        'timestamp': _format_timestamp(current_time),
+                        'message': f"Engagement score: {score}. Try asking more questions and interact with audience."
+                    })
+            
+            interaction = chunk_result.get('interaction', {})
+            if isinstance(interaction, dict):
+                score = interaction.get('score', 0)
+                if score < 70:
+                    weak_moments.append({
+                        'timestamp': _format_timestamp(current_time),
+                        'message': f"Interaction score: {score}. Improve eye contact and body language."
+                    })
+            
+            current_time += chunk_result.get('duration', 0)
+        
+        print(f"✓ Identified {len(weak_moments)} weak moments")
+        
+        # ============ STEP 6: Create session document ============
+        session_id = f'session_{uuid.uuid4().hex[:8]}'
+        
+        session_document = {
+            'sessionId': session_id,
+            'sessionName': session_name,
+            'videoUrl': video_url,
+            'videoId': video_id,
+            'uploadSource': 'file',
+            'cloudinaryPublicId': None,
+            'duration': int(total_duration),
+            'mentorId': mentor_id,
+            'userId': user_id,
+            'uploadedFile': None,
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow(),
+            'timeline': {
+                'audio': [],
+                'video': [],
+                'transcript': timeline_transcript,
+                'scoreDips': [],
+                'scorePeaks': []
+            },
+            'metrics': metrics,
+            'weakMoments': weak_moments,
+            'analysis': analysis_results,  # Store original analysis results
+            'diarization': diarization_result,  # Store dummy diarization
+            'context': context_text
+        }
+        
+        print(f"→ Saving session to MongoDB...")
+        
+        # ============ STEP 7: Save to MongoDB ============
+        try:
+            # Use the Session model's create_session method which handles:
+            # - Schema validation
+            # - Gemini API enrichment for missing fields
+            # - Timestamp handling
+            saved_session = Session.create_session(session_document)
+            
+            print(f"✓ Session saved with ID: {saved_session.get('_id')}")
+            
+            # Build response
+            response_payload = {
+                'message': 'Session created successfully from analysis results',
+                'session': {
+                    'id': saved_session.get('_id'),
+                    'sessionId': saved_session.get('sessionId'),
+                    'sessionName': saved_session.get('sessionName'),
+                    'score': overall_avg,
+                    'date': saved_session.get('created_at').isoformat() if isinstance(saved_session.get('created_at'), datetime) else str(saved_session.get('created_at')),
+                    'duration': saved_session.get('duration'),
+                    'weakMoments': saved_session.get('weakMoments', []),
+                    'studentCount': 1,
+                    'uploadedFile': video_url
+                }
+            }
+            
+            return jsonify(response_payload), 201
+            
+        except Exception as db_error:
+            print(f"❌ Database error: {str(db_error)}")
+            return jsonify({
+                'error': f'Failed to save session to database: {str(db_error)}',
+                'sessionData': session_document  # Return the data that failed to save
+            }), 500
+    
+    except Exception as e:
+        print(f"❌ Error creating session from analysis: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Failed to process analysis results: {str(e)}'}), 500
+
+
+def _format_timestamp(seconds):
+    """Convert seconds to HH:MM:SS format"""
+    sec = int(seconds or 0)
+    h = sec // 3600
+    m = (sec % 3600) // 60
+    s = sec % 60
+    return f"{h:02d}:{m:02d}:{s:02d}"
+
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
