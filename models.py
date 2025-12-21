@@ -1524,3 +1524,9 @@ CRITICAL REQUIREMENTS:
         if result:
             result['_id'] = str(result['_id'])
         return result
+
+    @staticmethod
+    def delete_session(session_id: str):
+        """Delete a session by its sessionId."""
+        result = sessions_collection.delete_one({'sessionId': session_id})
+        return result.deleted_count > 0

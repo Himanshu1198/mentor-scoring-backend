@@ -1096,6 +1096,33 @@ def get_session_breakdown(mentor_id, session_id):
         traceback.print_exc()
         return jsonify({'error': f'Failed to load session breakdown: {str(e)}'}), 500
 
+@app.route('/api/mentor/<mentor_id>/sessions/<session_id>/delete', methods=['DELETE', 'POST'])
+def delete_session(mentor_id, session_id):
+    """Delete a session by ID"""
+    try:
+        # Verify session exists and belongs to this mentor
+        session = Session.find_by_sessionId(session_id)
+        
+        if not session:
+            return jsonify({'error': 'Session not found'}), 404
+        
+        # Verify the session belongs to this mentor
+        if session.get('mentorId') != mentor_id:
+            return jsonify({'error': 'Unauthorized: Session does not belong to this mentor'}), 403
+        
+        # Delete from database
+        result = Session.delete_session(session_id)
+        
+        if result:
+            print(f"✓ Deleted session {session_id} for mentor {mentor_id}")
+            return jsonify({'message': 'Session deleted successfully', 'sessionId': session_id}), 200
+        else:
+            return jsonify({'error': 'Failed to delete session'}), 500
+            
+    except Exception as e:
+        print(f"✗ Error deleting session: {str(e)}")
+        return jsonify({'error': f'Failed to delete session: {str(e)}'}), 500
+
 def load_uploaded_sessions():
     """Load uploaded sessions data, create file if missing"""
     if not os.path.exists(UPLOADED_SESSIONS_FILE):
@@ -1552,85 +1579,91 @@ def analyze_video_from_url(mentor_id):
             if local_video_path or video_url:
                 diarization_url = os.getenv('DIARIZATION_SERVICE_URL')
                 
-                # Priority 1: Send local video file if available
-                if local_video_path and os.path.exists(local_video_path):
-                    try:
-                        # Read file content first
-                        with open(local_video_path, 'rb') as f:
-                            file_content = f.read()
-                        
-                        # Create multipart form data with file field
-                        files = {'file': ('video.mp4', file_content, 'video/mp4')}
-                        
-                        print(f"→ Sending local video to diarization service (POST)... (size: {len(file_content)} bytes)")
-                        print(f"→ Diarization URL: {diarization_url}")
-                        
-                        resp2 = requests.post(diarization_url, files=files, timeout=300)
-                        
-                        print(f"← Diarization service response: {resp2.status_code}")
-                        
-                        if resp2.ok:
-                            diarization_result = resp2.json()
-                            diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
-                            with open(diarization_filename, 'w') as df:
-                                json.dump(diarization_result, df)
-                            print(f"✓ Diarization service returned results (saved to {diarization_filename})")
-                        else:
-                            print(f"⚠ Diarization service error: {resp2.status_code}")
-                            print(f"⚠ Response preview: {resp2.text[:500]}")
-                            try:
+                if not diarization_url:
+                    print(f"⚠ DIARIZATION_SERVICE_URL not configured")
+                    diarization_result = {'error': 'Diarization service not configured'}
+                else:
+                    # Priority 1: Send local video file if available
+                    if local_video_path and os.path.exists(local_video_path):
+                        try:
+                            # Read file content
+                            with open(local_video_path, 'rb') as f:
+                                file_content = f.read()
+                            
+                            # Create multipart form data with file field
+                            files = {'file': ('video.mp4', file_content, 'video/mp4')}
+                            
+                            print(f"→ Sending local video to diarization service (POST)... (size: {len(file_content)} bytes)")
+                            print(f"→ Diarization URL: {diarization_url}")
+                            
+                            resp2 = requests.post(diarization_url, files=files, timeout=300)
+                            
+                            print(f"← Diarization service response: {resp2.status_code}")
+                            
+                            if resp2.ok:
                                 diarization_result = resp2.json()
-                            except Exception:
-                                diarization_result = {'error': f'Diarization service returned status {resp2.status_code}: {resp2.text[:200]}'}
-                    except Exception as e:
-                        print(f"⚠ Local file upload failed: {str(e)}")
-                        import traceback
-                        traceback.print_exc()
-                        
-                        # Fallback to URL-based diarization if video_url exists
-                        if video_url:
-                            print(f"→ Falling back to URL-based diarization (POST)...")
-                            diarization_data = {'video_url': video_url}
-                            try:
-                                resp2 = requests.post(diarization_url, json=diarization_data, timeout=120)
-                                print(f"← Diarization service (URL fallback) response: {resp2.status_code}")
-                                
-                                if resp2.ok:
+                                diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
+                                with open(diarization_filename, 'w') as df:
+                                    json.dump(diarization_result, df)
+                                print(f"✓ Diarization service returned results (saved to {diarization_filename})")
+                            else:
+                                print(f"⚠ Diarization service error: {resp2.status_code}")
+                                print(f"⚠ Response preview: {resp2.text[:500]}")
+                                try:
                                     diarization_result = resp2.json()
-                                    diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
-                                    with open(diarization_filename, 'w') as df:
-                                        json.dump(diarization_result, df)
-                                    print(f"✓ Diarization service (URL fallback) returned results")
-                                else:
-                                    try:
-                                        diarization_result = resp2.json()
-                                    except Exception:
-                                        diarization_result = {'error': f'Diarization service returned status {resp2.status_code}'}
-                            except Exception as url_error:
-                                diarization_result = {'error': f'URL fallback failed: {str(url_error)}'}
-                        else:
-                            diarization_result = {'error': f'File upload failed and no URL available: {str(e)}'}
-                
-                # Priority 2: Send URL if no local video
-                elif video_url:
-                    try:
-                        diarization_data = {'video_url': video_url}
-                        print(f"→ Sending video URL to diarization service...")
-                        resp2 = requests.post(diarization_url, json=diarization_data, timeout=120)
-                        if resp2.ok:
-                            diarization_result = resp2.json()
-                            diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
-                            with open(diarization_filename, 'w') as df:
-                                json.dump(diarization_result, df)
-                            print(f"✓ Diarization service returned results")
-                        else:
-                            try:
+                                except Exception:
+                                    diarization_result = {'error': f'Diarization service returned status {resp2.status_code}: {resp2.text[:200]}'}
+                        except Exception as e:
+                            print(f"⚠ Local file upload failed: {str(e)}")
+                            import traceback
+                            traceback.print_exc()
+                            
+                            # Fallback to URL-based diarization if video_url exists
+                            if video_url:
+                                print(f"→ Falling back to URL-based diarization...")
+                                diarization_result = _send_video_url_to_diarization(video_url, diarization_url, session_id) # type: ignore
+                            else:
+                                diarization_result = {'error': f'File upload failed and no URL available: {str(e)}'}
+                    
+                    # Priority 2: Send video from URL (download and upload)
+                    elif video_url:
+                        print(f"→ Downloading video from S3 URL and sending to diarization service...")
+                        try:
+                            # Download video from S3/Cloudinary URL
+                            print(f"→ Downloading video from: {video_url}")
+                            video_response = requests.get(video_url, timeout=300, stream=True)
+                            video_response.raise_for_status()
+                            
+                            # Get file size
+                            file_size = len(video_response.content)
+                            print(f"✓ Downloaded video (size: {file_size} bytes)")
+                            
+                            # Send to diarization service as multipart form-data
+                            files = {'file': ('video.mp4', video_response.content, 'video/mp4')}
+                            
+                            print(f"→ Sending downloaded video to diarization service...")
+                            print(f"→ Diarization URL: {diarization_url}")
+                            
+                            resp2 = requests.post(diarization_url, files=files, timeout=300)
+                            
+                            print(f"← Diarization service response: {resp2.status_code}")
+                            
+                            if resp2.ok:
                                 diarization_result = resp2.json()
-                            except Exception:
-                                diarization_result = {'error': f'Diarization service returned status {resp2.status_code}'}
-                            print(f"⚠ Diarization service error: {resp2.status_code}")
-                    except Exception as e:
-                        diarization_result = {'error': f'Failed to call diarization service: {str(e)}'}
+                                diarization_filename = os.path.join(DATA_DIR, f'diarization_{session_id}.json')
+                                with open(diarization_filename, 'w') as df:
+                                    json.dump(diarization_result, df)
+                                print(f"✓ Diarization service returned results (saved to {diarization_filename})")
+                            else:
+                                print(f"⚠ Diarization service error: {resp2.status_code}")
+                                print(f"⚠ Response preview: {resp2.text[:500]}")
+                                try:
+                                    diarization_result = resp2.json()
+                                except Exception:
+                                    diarization_result = {'error': f'Diarization service returned status {resp2.status_code}: {resp2.text[:200]}'}
+                        except Exception as download_error:
+                            print(f"⚠ Failed to download or process video from URL: {str(download_error)}")
+                            diarization_result = {'error': f'Failed to download video from URL: {str(download_error)}'}
         except Exception as e:
             diarization_result = {'error': f'Failed to call diarization service: {str(e)}'}
         
@@ -2425,23 +2458,68 @@ def create_session_from_s3_analysis(mentor_id):
         
         print(f"✓ Built transcript timeline with {len(timeline_transcript)} segments")
         
-        # ============ STEP 4: Create dummy diarization data (no API available) ============
-        diarization_result = {
-            'batch_id': analysis_results.get('batch_id', str(uuid.uuid4())),
-            'sentences': [
-                {
-                    'start': float(idx * (total_duration / len(all_transcripts)) if len(all_transcripts) > 0 else 0),
-                    'end': float((idx + 1) * (total_duration / len(all_transcripts)) if len(all_transcripts) > 0 else total_duration),
-                    'text': transcript[:200] if (idx < len(all_transcripts)) else 'Session content',
-                    'needs_improvement': False,
-                    'improvement': {'suggestion': '', 'reason': ''}
+        # ============ STEP 4: Call diarization service with video URL ============
+        diarization_result = None
+        try:
+            diarization_url = os.getenv('DIARIZATION_SERVICE_URL')
+            
+            if not diarization_url:
+                print(f"⚠ DIARIZATION_SERVICE_URL not configured, creating dummy diarization data")
+                # Create dummy diarization if service not available
+                diarization_result = {
+                    'batch_id': analysis_results.get('batch_id', str(uuid.uuid4())),
+                    'sentences': [
+                        {
+                            'start': float(idx * (total_duration / len(all_transcripts)) if len(all_transcripts) > 0 else 0),
+                            'end': float((idx + 1) * (total_duration / len(all_transcripts)) if len(all_transcripts) > 0 else total_duration),
+                            'text': transcript[:200] if (idx < len(all_transcripts)) else 'Session content',
+                            'needs_improvement': False,
+                            'improvement': {'suggestion': '', 'reason': ''}
+                        }
+                        for idx, transcript in enumerate(all_transcripts)
+                    ],
+                    'status': 'dummy_data'
                 }
-                for idx, transcript in enumerate(all_transcripts)
-            ],
-            'status': 'dummy_data'
-        }
+            elif video_url:
+                print(f"→ Calling diarization service with video URL: {video_url}")
+                
+                try:
+                    # Download video from URL
+                    print(f"📥 Downloading video from URL...")
+                    video_response = requests.get(video_url, timeout=300, stream=True)
+                    video_response.raise_for_status()
+                    
+                    # Create multipart form-data
+                    files = {'file': ('video.mp4', video_response.content, 'video/mp4')}
+                    
+                    # Send to diarization service
+                    print(f"📤 Sending to diarization service...")
+                    resp = requests.post(diarization_url, files=files, timeout=300)
+                    
+                    if resp.ok:
+                        diarization_result = resp.json()
+                        print(f"✓ Diarization service response received")
+                    else:
+                        print(f"⚠ Diarization service returned status {resp.status_code}")
+                        diarization_result = {'error': f'Service returned {resp.status_code}'}
+                        
+                except requests.exceptions.Timeout:
+                    print(f"⚠ Diarization service timeout")
+                    diarization_result = {'error': 'Service timeout'}
+                except requests.exceptions.RequestException as req_error:
+                    print(f"⚠ Request error to diarization service: {str(req_error)}")
+                    diarization_result = {'error': f'Request failed: {str(req_error)}'}
+            else:
+                print(f"⚠ No video URL available for diarization")
+                diarization_result = {'error': 'No video URL available'}
+                
+        except Exception as diar_error:
+            print(f"⚠ Diarization error: {str(diar_error)}")
+            diarization_result = {'error': f'Diarization failed: {str(diar_error)}'}
         
-        print(f"✓ Created dummy diarization data")
+        # Ensure diarization_result is set
+        if not diarization_result:
+            diarization_result = {'error': 'Diarization service not available'}
         
         # ============ STEP 5: Build weak moments from analysis ============
         weak_moments = []
